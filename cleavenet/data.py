@@ -44,11 +44,15 @@ class DataLoader(object):
         # Set save paths
         self.out_path = os.path.join('splits/', self.dataset+'/') # One split per dataset
         print(f'Save Path: {self.out_path}\n')
-        if os.path.exists(self.out_path):
+        
+        # if os.path.exists(self.out_path):
+        os.rmdir(self.out_path) # =================== Remove Me ===================
+        if os.path.exists(self.out_path): # =================== Remove Me ===================
             print("Splits previously written to file")
             self.X = list(get_data(self.out_path + 'X_all.csv', names=['sequence']).index)
             self.y = get_data(self.out_path + 'y_all.csv', index_col=None, names=mmps).values
             self.sequences = self.X
+            print(f'X:\n{self.X}\n\nY:\n{self.y}\n\n')
             if test_split > 0:
                 self.X_train = list(get_data(self.out_path + 'X_train.csv', names=['sequence']).index)
                 self.y_train = get_data(self.out_path + 'y_train.csv', index_col=None, names=mmps).values
@@ -56,7 +60,7 @@ class DataLoader(object):
                 self.y_test = get_data(self.out_path + 'y_test.csv', index_col=None, names=mmps).values
         else:
             os.makedirs(self.out_path)
-            print('Splits directory created', self.out_path)
+            print('Splits directory created:', self.out_path)
             #Load data
             data = self.load_zscore_data()
             self.sequences = data.index.to_list()
@@ -65,7 +69,9 @@ class DataLoader(object):
                 # these are artificially created in csv processing
                 self.sequences = [seq.replace(' ', '') for seq in self.sequences]
             if rounded:
-                data = data.apply(lambda x: custom_round(x, base=0.5)) # round to nearest 0.5
+                print(f'\n\nData:\n{data}\n\n')
+                for col in data.columns:
+                    data[col] = data[col].apply(lambda x: custom_round(x, base=0.5)) # round to nearest 0.5
             # Assign data
             self.X = self.sequences  # sequences
             self.y = data.values
@@ -80,7 +86,7 @@ class DataLoader(object):
                 np.savetxt(self.out_path + 'X_test.csv', self.X_test, delimiter=",", fmt='%s')
                 np.savetxt(self.out_path + 'y_test.csv', self.y_test, delimiter=",")
         
-        sys.exit()
+        # sys.exit()
 
         # Create vocab
         if not use_dataloader:
