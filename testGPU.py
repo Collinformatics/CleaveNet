@@ -1,19 +1,12 @@
-import torch
+import tensorflow as tf
 
-try:
-    deviceName = torch.cuda.get_device_name(torch.cuda.current_device())
-    print(f'GPU Name: {deviceName}')
-except:
-    pass
+gpus = tf.config.list_physical_devices('GPU')
 
-# Select device
-if torch.cuda.is_available():
-    device = torch.device('cuda')
-elif torch.backends.mps.is_available():
-    device = torch.device('mps')
+if gpus:
+    print("GPU(s) detected:")
+    for gpu in gpus:
+        print(" ", gpu)
+    device = "GPU"
 else:
-    device = torch.device('cpu')
-
-print(f'CUDA Available: {torch.cuda.is_available()}')
-print(f'CUDA Version: {torch.version.cuda}')
+    device = "CPU"
 print(f'Training Device: {device}\n')
