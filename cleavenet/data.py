@@ -43,11 +43,12 @@ class DataLoader(object):
 
         # Set save paths
         self.out_path = os.path.join('splits/', self.dataset+'/') # One split per dataset
-        print(f'Save Path: {self.out_path}\n')
-        
-        # if os.path.exists(self.out_path):
-        os.rmdir(self.out_path) # =================== Remove Me ===================
+
         if os.path.exists(self.out_path): # =================== Remove Me ===================
+            import shutil                 # =================== Remove Me ===================
+            shutil.rmtree(self.out_path)  # =================== Remove Me ===================
+        
+        if os.path.exists(self.out_path):
             print("Splits previously written to file")
             self.X = list(get_data(self.out_path + 'X_all.csv', names=['sequence']).index)
             self.y = get_data(self.out_path + 'y_all.csv', index_col=None, names=mmps).values
