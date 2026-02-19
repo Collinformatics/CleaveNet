@@ -9,10 +9,6 @@ dependencies:
   # TensorFlow GPU version compatible with conda
   - tensorflow=2.20.0
 
-   # GPU dependencies
-  - cudatoolkit=12.1
-  - cudnn=8.9
-
   # Data & ML libraries
   - scikit-learn
   - pandas
@@ -36,3 +32,4 @@ dependencies:
       - umap-learn
       - peptides
       - jellyfish
+
