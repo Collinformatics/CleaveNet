@@ -4,9 +4,26 @@ There are 2 ways to install based on your hardware. If you have an Nvidia GPU, u
 
 1) Nvidia GPU Enabled Install:
 
-  Install Python 3.11 and use "requirementsGPU.txt" to install the python modules
+  Use WSL Clone the GitHub
+  
+    git clone https://github.com/Collinformatics/CleaveNet
+  
+  Create conda environment:
 
-    pip install -r requirementsGPU.txt
+     conda env create -f environment.yml
+
+  Activate the virtual environment:
+
+    conda activate cleavenet
+
+  Test GPU activation:
+
+    python testGPU.py
+
+  In the future, we can monitor GPU useage with:
+  
+    watch -n 1 nvidia-smi
+
  
 2) Non-GPU Install:
 
