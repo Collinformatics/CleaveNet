@@ -49,20 +49,24 @@ if 'data/' in args.data_path:
 else:
 	data_path = os.path.join('data', args.data_path)
 
-if ' - ' in args.data_path and 'AA' in ' - ' in args.data_path:
+# Evaluate data_path
+if ' - ' in args.data_path and ' AA' in args.data_path:
     dataset = args.data_path.split(' - ')[0]
-    fname = args.data_path.split(' - ')[1]
+    fname = args.data_path.split(' - ')
     for s in fname:
+    	print(f's: {s}')
     	if ' AA' in s:
-    		args.seq_len = int(a.strip(' AA'))
+    		args.seq_len = int(s.strip(' AA'))
 else:
     dataset = args.data_path.strip('.csv')
 print(f'Training Dataset: {dataset}\n'
       f'   Training Data: {data_path}\n'
       f' Sequence Length: {args.seq_len}\n'
       f' Training Scheme: {args.training_scheme}\n'
-      f'      Model Type: {args.model_type}\n')
-print(f'Round: {args.round}\n')
+      f'      Model Type: {args.model_type}')
+print(f'Round: {args.round}')
+print()
+
 
 def main():
     if args.training_scheme == 'autoreg':

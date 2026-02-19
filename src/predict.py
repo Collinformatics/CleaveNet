@@ -4,7 +4,7 @@ import os
 import pandas as pd
 import cleavenet
 
-from cleavenet.utils import mmps
+from cleavenet.utils import get_data_dir
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--path-to-sequence-csv", type=str, default='/data/',
@@ -23,38 +23,40 @@ parser.add_argument("--model-architecture", type=str, default='transformer',
 args = parser.parse_args()
 
 
-# Get path to data
-data_dir = get_data_dir()
-if 'data/' in args.data_path:
-	data_path = args.data_path
-else:
-	data_path = os.path.join('data', args.data_path)
-
-if ' - ' in args.data_path and 'AA' in ' - ' in args.data_path:
-    dataset = args.data_path.split(' - ')[0]
-    fname = args.data_path.split(' - ')[1]
-    for s in fname:
-    	if 'AA' in s:
-    		args.seq_len = int(a.strip(' AA'))
-else:
-    dataset = args.data_path.strip('.csv')
-    
-
-
 if not os.path.exists(args.save_dir):
     os.makedirs(args.save_dir, exist_ok=True)
+
 
 input_df = pd.read_csv(args.path_to_sequence_csv, names=['sequence']).set_index('sequence')
 eval_sequences = input_df.index.to_list()
 
+
+# Define column names
+if 'kukreja' in args.path_to_sequence_csv:
+	from cleavenet.utils import mmps
+	trueEnz = mmps
+else:
+	from pathlib import Path
+	parts = Path(args.path_to_sequence_csv).parts
+	for part in parts:
+		print(part)
+		if ' - ' in part and 'AA' in part:
+			print(1)
+			colnames = dataset.split(' - ')[0]
+			break
+		else:
+			colnames = dataset
+print(f'\nCol: {colname}\n')
+
+sys.exit()
+
 true_scores=None
-true_mmps=mmps
 if args.path_to_zscores is not None:
     if args.no_csv_header:
         true_scores = pd.read_csv(args.path_to_zscores, names=mmps).to_numpy()
     else:
         true_scores = pd.read_csv(args.path_to_zscores)
-        true_mmps = true_scores.columns.to_list()
+        trueEnz = true_scores.columns.to_list()
         true_scores = true_scores.to_numpy()
 #data_dir = cleavenet.utils.get_data_dir()
 #data_path = os.path.join(data_dir, "kukreja.csv")
@@ -62,8 +64,7 @@ if args.path_to_zscores is not None:
 
 
 # Load in dataloader
-kukreja = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='autoreg', test_split=0.2,
-                                            dataset=dataset)
+kukreja = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='autoreg', test_split=0.2, dataset=dataset)
 
 k_pred_zscores, k_std_zscores = cleavenet.models.prediction(data_path,
                                                             eval_sequences,
@@ -71,4 +72,4 @@ k_pred_zscores, k_std_zscores = cleavenet.models.prediction(data_path,
                                                             checkpoint_dir='weights/',
                                                             predictor_model_type=args.model_architecture,
                                                             true_zscores=true_scores,
-                                                            true_mmps=true_mmps)
+                                                            trueEnz=trueEnz)
