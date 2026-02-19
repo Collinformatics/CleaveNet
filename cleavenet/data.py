@@ -23,145 +23,150 @@ def custom_round(x, base=5):
 
 
 class DataLoader(object):
-    """
-    DataLoader class for loading peptide sequence data, given a CSV file (data_path)
-    Creates 1 test/train split for Dataset, or loads saved splits
-    Saves a char2idx dict mapping for each model
-    """
-    def __init__(self, data_path, seed=0, task='predictor', model='bert', test_split=0.2, dataset='kukreja',
-                 use_dataloader=None, rounded=False):
-        self.seed = seed
-        self.model = model  # bert, autoregressive, regression
-        self.dataset = dataset
-        if rounded:
-            self.dataset += '_rounded'
-        self.data_path = data_path
-        self.test_split = test_split
-        self.task = task
-        np.random.seed(self.seed)
-        random.seed(self.seed)
+	"""
+	DataLoader class for loading peptide sequence data, given a CSV file (data_path)
+	Creates 1 test/train split for Dataset, or loads saved splits
+	Saves a char2idx dict mapping for each model
+	"""
+	def __init__(self, data_path, seed=0, task='predictor', model='bert', test_split=0.2, dataset='kukreja',
+			 use_dataloader=None, rounded=False):
+		self.seed = seed
+		self.model = model  # bert, autoregressive, regression
+		self.dataset = dataset
+		if rounded:
+			self.dataset += '_rounded'
+		self.data_path = data_path
+		self.test_split = test_split
+		self.task = task
+		np.random.seed(self.seed)
+		random.seed(self.seed)
 
-        # Set save paths
-        self.out_path = os.path.join('splits/', self.dataset+'/') # One split per dataset
+		# Set save paths
+		self.out_path = os.path.join('splits/', self.dataset+'/') # One split per dataset
 
-        if os.path.exists(self.out_path): # =================== Remove Me ===================
-            import shutil                 # =================== Remove Me ===================
-            shutil.rmtree(self.out_path)  # =================== Remove Me ===================
-        
-        if os.path.exists(self.out_path):
-            print("Splits previously written to file")
-            self.X = list(get_data(self.out_path + 'X_all.csv', names=['sequence']).index)
-            self.y = get_data(self.out_path + 'y_all.csv', index_col=None, names=mmps).values
-            self.sequences = self.X
-            print(f'X:\n{self.X}\n\nY:\n{self.y}\n\n')
-            if test_split > 0:
-                self.X_train = list(get_data(self.out_path + 'X_train.csv', names=['sequence']).index)
-                self.y_train = get_data(self.out_path + 'y_train.csv', index_col=None, names=mmps).values
-                self.X_test = list(get_data(self.out_path + 'X_test.csv', names=['sequence']).index)
-                self.y_test = get_data(self.out_path + 'y_test.csv', index_col=None, names=mmps).values
-        else:
-            os.makedirs(self.out_path)
-            print('Splits directory created:', self.out_path)
-            #Load data
-            data = self.load_zscore_data()
-            self.sequences = data.index.to_list()
-            if dataset == 'kukreja':
-                # replace gaps in data in kukreja
-                # these are artificially created in csv processing
-                self.sequences = [seq.replace(' ', '') for seq in self.sequences]
-            if rounded:
-                print(f'\n\nData:\n{data}\n\n')
-                for col in data.columns:
-                    data[col] = data[col].apply(lambda x: custom_round(x, base=0.5)) # round to nearest 0.5
-            # Assign data
-            self.X = self.sequences  # sequences
-            self.y = data.values
-            np.savetxt(self.out_path + 'X_all.csv', self.X, delimiter=",", fmt='%s')
-            np.savetxt(self.out_path + 'y_all.csv', self.y, delimiter=",")
-            if test_split > 0:
-                self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.X, self.y,
-                                                                                        test_size=self.test_split,
-                                                                                        random_state=self.seed)
-                np.savetxt(self.out_path + 'X_train.csv', self.X_train, delimiter=",", fmt='%s')
-                np.savetxt(self.out_path + 'y_train.csv', self.y_train, delimiter=",")
-                np.savetxt(self.out_path + 'X_test.csv', self.X_test, delimiter=",", fmt='%s')
-                np.savetxt(self.out_path + 'y_test.csv', self.y_test, delimiter=",")
+		if os.path.exists(self.out_path): # =================== Remove Me ===================
+			import shutil                 # =================== Remove Me ===================
+			shutil.rmtree(self.out_path)  # =================== Remove Me ===================
+		    
+		if os.path.exists(self.out_path):
+			if dataset == 'kukreja':
+				names = mmps
+			else:
+				names = dataset
+      		
+			print("Splits previously written to file")
+			self.X = list(get_data(self.out_path + 'X_all.csv', names=['sequence']).index)
+			self.y = get_data(self.out_path + 'y_all.csv', index_col=None, names=mmps).values
+			self.sequences = self.X
+			print(f'X:\n{self.X}\n\nY:\n{self.y}\n\n')
+			if test_split > 0:
+				self.X_train = list(get_data(self.out_path + 'X_train.csv', names=['sequence']).index)
+				self.y_train = get_data(self.out_path + 'y_train.csv', index_col=None, names=mmps).values
+				self.X_test = list(get_data(self.out_path + 'X_test.csv', names=['sequence']).index)
+				self.y_test = get_data(self.out_path + 'y_test.csv', index_col=None, names=mmps).values
+		else:
+			os.makedirs(self.out_path)
+			print('Splits directory created:', self.out_path)
+			#Load data
+			data = self.load_zscore_data()
+			self.sequences = data.index.to_list()
+			if dataset == 'kukreja':
+				# replace gaps in data in kukreja
+				# these are artificially created in csv processing
+				self.sequences = [seq.replace(' ', '') for seq in self.sequences]
+			if rounded:
+				print(f'\n\nData:\n{data}\n\n')
+				for col in data.columns:
+					data[col] = data[col].apply(lambda x: custom_round(x, base=0.5)) # round to nearest 0.5
+			# Assign data
+			self.X = self.sequences  # sequences
+			self.y = data.values
+			np.savetxt(self.out_path + 'X_all.csv', self.X, delimiter=",", fmt='%s')
+			np.savetxt(self.out_path + 'y_all.csv', self.y, delimiter=",")
+			if test_split > 0:
+				self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.X, self.y,
+					                                                                    test_size=self.test_split,
+					                                                                    random_state=self.seed)
+				np.savetxt(self.out_path + 'X_train.csv', self.X_train, delimiter=",", fmt='%s')
+				np.savetxt(self.out_path + 'y_train.csv', self.y_train, delimiter=",")
+				np.savetxt(self.out_path + 'X_test.csv', self.X_test, delimiter=",", fmt='%s')
+				np.savetxt(self.out_path + 'y_test.csv', self.y_test, delimiter=",")
         
         # sys.exit()
 
-        # Create vocab
-        if not use_dataloader:
-            self.char2idx, self.idx2char = self.create_vocab()
-            print("Vocab: \n", self.char2idx)
-        else:
-            self.char2idx = use_dataloader.char2idx
-            self.idx2char = use_dataloader.idx2char
-            print("Vocab: \n", self.char2idx)
+		# Create vocab
+		if not use_dataloader:
+			self.char2idx, self.idx2char = self.create_vocab()
+			print("Vocab: \n", self.char2idx)
+		else:
+			self.char2idx = use_dataloader.char2idx
+			self.idx2char = use_dataloader.idx2char
+			print("Vocab: \n", self.char2idx)
 
-        # If using generator
-        if task == 'generator':
-            train_data = pd.DataFrame(self.y_train, columns=mmps)
-            train_data['sequence'] = self.X_train
-            train_data = train_data.set_index('sequence')
-            self.X_train = train_data.index.to_list()
-            self.y_train = train_data.values
+		# If using generator
+		if task == 'generator':
+			train_data = pd.DataFrame(self.y_train, columns=mmps)
+			train_data['sequence'] = self.X_train
+			train_data = train_data.set_index('sequence')
+			self.X_train = train_data.index.to_list()
+			self.y_train = train_data.values
 
-            test_data = pd.DataFrame(self.y_test, columns=mmps)
-            test_data['sequence'] = self.X_test
-            test_data = test_data.set_index('sequence')
-            self.X_test = test_data.index.to_list()
-            self.y_test = test_data.values
-
-
-    def load_zscore_data(self):
-        """
-        Load z-scored protease-substrate data from path
-        """
-        df_z = pd.read_csv(self.data_path, header=0)
-        df_z = df_z.dropna(how='all', axis=1)
-        if self.dataset == 'kukreja' or self.dataset == 'kukreja_rounded':
-            df_z = df_z.drop('construct', axis=1)
-        elif self.dataset == 'bhatia': # Remove all seqs not == 10 residues in length (this is outside training task)
-            new_sequences = df_z['sequence'].to_list()
-            new_sequences = [seq[2:-2] for seq in new_sequences] # crop in middle
-            seq_lens = [len(seq) for seq in new_sequences]
-            df_z['sequence'] = new_sequences
-            df_z['len'] = seq_lens
-            df_z = df_z.drop('len', axis=1)
-            print(df_z)
-        df_z = pd.pivot_table(df_z, index=["sequence"])  # average z-scores for any duplicated sequences
-        print("WARNING: PIVOT TABLE WILL RE-ORDER COLUMNS IN DATAFRAME- ENSURE LABELING IS MAPPED CORRECTLY")
-        return df_z
+			test_data = pd.DataFrame(self.y_test, columns=mmps)
+			test_data['sequence'] = self.X_test
+			test_data = test_data.set_index('sequence')
+			self.X_test = test_data.index.to_list()
+			self.y_test = test_data.values
 
 
-    def create_vocab(self):
-        # Find unique characters
-        seqs_joined = "".join(self.sequences)
+	def load_zscore_data(self):
+		"""
+		Load z-scored protease-substrate data from path
+		"""
+		df_z = pd.read_csv(self.data_path, header=0)
+		df_z = df_z.dropna(how='all', axis=1)
+		if self.dataset == 'kukreja' or self.dataset == 'kukreja_rounded':
+		    df_z = df_z.drop('construct', axis=1)
+		elif self.dataset == 'bhatia': # Remove all seqs not == 10 residues in length (this is outside training task)
+		    new_sequences = df_z['sequence'].to_list()
+		    new_sequences = [seq[2:-2] for seq in new_sequences] # crop in middle
+		    seq_lens = [len(seq) for seq in new_sequences]
+		    df_z['sequence'] = new_sequences
+		    df_z['len'] = seq_lens
+		    df_z = df_z.drop('len', axis=1)
+		    print(df_z)
+		df_z = pd.pivot_table(df_z, index=["sequence"])  # average z-scores for any duplicated sequences
+		print("WARNING: PIVOT TABLE WILL RE-ORDER COLUMNS IN DATAFRAME- ENSURE LABELING IS MAPPED CORRECTLY")
+		return df_z
 
-        if self.task == 'regression':
-            self.PAD = '-'
-            vocab = [self.PAD] # set 0 to pad token
-            vocab += sorted(set(seqs_joined))
-            # Add CLS for transformer
-            if self.model == 'transformer':
-                self.CLS = '!' # classifier token
-                vocab += self.CLS
-        else:
-            vocab = sorted(set(seqs_joined))
-        # For generator task add special tokens
-        if self.task == 'generator':
-            if self.model == 'bert':
-                self.MASK = '#'
-                vocab += self.MASK
-            elif self.model == 'autoreg':
-                self.START = '$'
-                self.STOP = '*'
-                vocab += self.START
-                vocab += self.STOP
 
-        char2idx = {u: i for i, u in enumerate(vocab)}
-        idx2char = np.array(vocab)
-        return char2idx, idx2char
+	def create_vocab(self):
+		# Find unique characters
+		seqs_joined = "".join(self.sequences)
+
+		if self.task == 'regression':
+		    self.PAD = '-'
+		    vocab = [self.PAD] # set 0 to pad token
+		    vocab += sorted(set(seqs_joined))
+		    # Add CLS for transformer
+		    if self.model == 'transformer':
+		        self.CLS = '!' # classifier token
+		        vocab += self.CLS
+		else:
+		    vocab = sorted(set(seqs_joined))
+		# For generator task add special tokens
+		if self.task == 'generator':
+		    if self.model == 'bert':
+		        self.MASK = '#'
+		        vocab += self.MASK
+		    elif self.model == 'autoreg':
+		        self.START = '$'
+		        self.STOP = '*'
+		        vocab += self.START
+		        vocab += self.STOP
+
+		char2idx = {u: i for i, u in enumerate(vocab)}
+		idx2char = np.array(vocab)
+		return char2idx, idx2char
 
 
 def tokenize_sequences(sequences, dataloader):
@@ -215,6 +220,9 @@ def get_data(path, index_col=0, names=None):
         data = pd.read_csv(path, index_col=index_col, names=names)
     else:
         data = pd.read_csv(path, index_col=index_col)
+    
+    print(f'\n Get Data: {names}\n{data}\n\n') 
+    
     return data
 
 

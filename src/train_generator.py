@@ -44,13 +44,17 @@ rng = random.Random(args.random_seed) # set random seed
 
 # Get path to data
 data_dir = get_data_dir()
-data_path = os.path.join(data_dir, args.data_path)
-data_path = os.path.join(os.getcwd(), args.data_path)
-data_path = os.path.join('data', args.data_path)
+if 'data/' in args.data_path:
+	data_path = args.data_path
+else:
+	data_path = os.path.join('data', args.data_path)
 
-if ' - ' in args.data_path:
+if ' - ' in args.data_path and 'AA' in ' - ' in args.data_path:
     dataset = args.data_path.split(' - ')[0]
-    args.seq_len = args.data_path.split(' - ')[2].strip(' AA')
+    fname = args.data_path.split(' - ')[1]
+    for s in fname:
+    	if ' AA' in s:
+    		args.seq_len = int(a.strip(' AA'))
 else:
     dataset = args.data_path.strip('.csv')
 print(f'Training Dataset: {dataset}\n'
@@ -65,10 +69,8 @@ def main():
         causal=True
         model_label = '/AUTOREG_'+args.model_type
         args.seq_len+=1 # account for start token
-        # dataloader = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='autoreg', test_split=0.2,
-        #                                     dataset=dataset, rounded=True)
-        dataloader = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='autoreg', test_split=0.2,
-                                               dataset=dataset, rounded=args.round)
+        dataloader = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='autoreg', test_split=0.2, dataset=dataset, rounded=True)
+        #dataloader = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='autoreg', test_split=0.2, dataset=dataset, rounded=args.round)
         start_id = dataloader.char2idx[dataloader.START]
         end_id = dataloader.char2idx[dataloader.STOP]
         print("start_id", start_id)
@@ -77,8 +79,7 @@ def main():
     elif args.training_scheme == 'bert':
         causal=False
         model_label='/BERT_'+args.model_type
-        dataloader = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='bert', test_split=0.2,
-                                               dataset=dataset)
+        dataloader = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='bert', test_split=0.2, dataset=dataset)
         masking_id = dataloader.char2idx[dataloader.MASK]
         print("masking_id", masking_id)
     else:
