@@ -1,0 +1,38 @@
+name: cleavenet
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  # Python version
+  - python=3.11
+
+  # TensorFlow GPU version compatible with conda
+  - tensorflow=2.20.0
+
+   # GPU dependencies
+  - cudatoolkit=12.1
+  - cudnn=8.9
+
+  # Data & ML libraries
+  - scikit-learn
+  - pandas
+  - matplotlib
+  - xlrd
+  - mpld3
+  - jupyter
+  - ipykernel
+
+  # IDE / optional GUI
+  - spyder
+
+  # pip packages (installed inside the conda environment)
+  - pip
+  - pip:
+      - seaborn
+      - logomaker
+      - tqdm
+      - itables
+      - seqlogo
+      - umap-learn
+      - peptides
+      - jellyfish
