@@ -20,7 +20,7 @@ There are 2 ways to install based on your hardware. If you have an Nvidia GPU, u
 
     python testGPU.py
 
-  In the future, we can monitor GPU useage with:
+  In the future, we can monitor GPU usage with:
   
     watch -n 1 nvidia-smi
 
