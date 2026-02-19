@@ -617,41 +617,44 @@ def load_generator_model(model_type, training_scheme='unconditional', parent_dir
     return model, checkpoint_path
 
 def load_predictor_model(model_type, checkpoint_path, batch_size, mask_zero=False):
-    d_model = 32
-    len_mmps = 18
+	d_model = 32
+	len_mmps = 18
 
-    if model_type == 'lstm':
-        embedding_dim = 22
-        dropout = 0.25
-        regu = 0.01
-        max_len = 10
-        vocab_size = 21  # did not train with CLS token
-        model = cleavenet.models.RNNPredictor(vocab_size, embedding_dim, d_model,
-                                              dropout, regu, max_len, len_mmps, mask_zero=mask_zero)
+	if model_type == 'lstm':
+		embedding_dim = 22
+		dropout = 0.25
+		regu = 0.01
+		max_len = 10
+		vocab_size = 21  # did not train with CLS token
+		model = cleavenet.models.RNNPredictor(vocab_size, embedding_dim, d_model,
+		                                      dropout, regu, max_len, len_mmps, mask_zero=mask_zero)
 
-    elif model_type == 'transformer':
-        d_model = 32
-        num_layers = 2
-        num_heads = 6
-        dropout = 0
-        vocab_size = 22
-        embedding_dim = 32
-        model = cleavenet.models.TransformerEncoder(
-            num_layers=num_layers,
-            d_model=embedding_dim, #d_model,
-            num_heads=num_heads,
-            dff=d_model,  # dense params
-            vocab_size=vocab_size,
-            dropout_rate=dropout,
-            output_dim=len_mmps,
-            pool_outputs=True,
-            mask_zero=mask_zero)
+	elif model_type == 'transformer':
+		d_model = 32
+		num_layers = 2
+		num_heads = 6
+		dropout = 0
+		vocab_size = 22
+		embedding_dim = 32
+		model = cleavenet.models.TransformerEncoder(
+		    num_layers=num_layers,
+		    d_model=embedding_dim, #d_model,
+		    num_heads=num_heads,
+		    dff=d_model,  # dense params
+		    vocab_size=vocab_size,
+		    dropout_rate=dropout,
+		    output_dim=len_mmps,
+		    pool_outputs=True,
+		    mask_zero=mask_zero)
 
-    fake_batch = np.array([[21, 20, 14, 8, 9, 13, 10 , 9 ,16, 17 , 3]])
-    model(fake_batch, training=False) # build model in TF
-    model.summary()
-    model.load_weights(checkpoint_path)  # load weights
-    return model
+	fake_batch = np.array([[21, 20, 14, 8, 9, 13, 10 , 9 ,16, 17 , 3]])
+	model(fake_batch, training=False) # build model in TF
+	model.summary()
+	print(f'\nPath: {checkpoint_path}\n')
+	import sys
+	sys.exit()
+	model.load_weights(checkpoint_path)  # load weights
+	return model
 
 
 def inference(model, dataloader, causal=False, seq_len=10, penalty=1, verbose=False, conditioning_tag=None, temperature=1):
@@ -712,7 +715,7 @@ def inference(model, dataloader, causal=False, seq_len=10, penalty=1, verbose=Fa
     return generated_seq
 
 
-def prediction(data_path_kukreja, gen_data, generated_dir, true_zscores=None, true_mmps=None, checkpoint_dir='weights/', predictor_model_type='transformer', number_top_candidates=50):
+def prediction(dataPath, gen_data, generated_dir, dataset, true_zscores=None, trueEnz=None, checkpoint_dir='weights/', predictor_model_type='transformer', number_top_candidates=50):
     if not os.path.exists(generated_dir):
         os.mkdir(generated_dir)
     if predictor_model_type == 'transformer':
@@ -732,14 +735,14 @@ def prediction(data_path_kukreja, gen_data, generated_dir, true_zscores=None, tr
             'lstm_4/'
         ]
     
-    kukreja = cleavenet.data.DataLoader(data_path_kukreja, seed=0, task='regression', model=predictor_model_type, test_split=0.2,
-                                        dataset='kukreja')
+    dataloader = cleavenet.data.DataLoader(dataPath, seed=0, task='regression', model=predictor_model_type, test_split=0.2,
+                                        dataset=dataset)
     
     max_seq_len = max([len(s) for s in gen_data])
     gen_data = [cleavenet.data.pad(seq, max_seq_len=max_seq_len, pad_token='-') for seq in gen_data]
-    x_all = cleavenet.data.tokenize_sequences(gen_data, kukreja)
+    x_all = cleavenet.data.tokenize_sequences(gen_data, dataloader)
     if predictor_model_type == 'transformer':
-        cls_idx = kukreja.char2idx[kukreja.CLS]
+        cls_idx = dataloader.char2idx[dataloader.CLS]
         x_all = np.stack([np.append(np.array(cls_idx), s) for s in x_all])
     num_samples = len(gen_data)
     batch_size = num_samples
@@ -757,15 +760,15 @@ def prediction(data_path_kukreja, gen_data, generated_dir, true_zscores=None, tr
         if true_zscores is not None:
             subset_preds = []
             for i, m in enumerate(mmps):
-                if m in true_mmps:
-                    j = true_mmps.index(m)
+                if m in trueEnz:
+                    j = trueEnz.index(m)
                     subset_preds.append(y_hat[:, i])
             subset_preds = np.stack(subset_preds, axis=1)
             mae = tf.reduce_mean(tf.abs(true_zscores - subset_preds), axis=0)
-            plotter.plot_mae(mae, true_mmps, generated_dir + str(e_num) + '_')
+            plotter.plot_mae(mae, trueEnz, generated_dir + str(e_num) + '_')
             rmse = model.compute_rmse(true_zscores, subset_preds, axis=0)
-            plotter.plot_rmse(rmse, true_mmps, generated_dir + str(e_num) + '_')
-            plotter.plot_parity(true_zscores, subset_preds, true_mmps, generated_dir)
+            plotter.plot_rmse(rmse, trueEnz, generated_dir + str(e_num) + '_')
+            plotter.plot_parity(true_zscores, subset_preds, trueEnz, generated_dir)
         predictions.append(y_hat)
         if e_num == (len(ensembles)-1): # save embeddings from last ensemble model for plotting later
             embeddings = model.last_layer_embeddings
@@ -779,13 +782,13 @@ def prediction(data_path_kukreja, gen_data, generated_dir, true_zscores=None, tr
         print("plot true vs mean predicted")
         pred = []
         for i, m in enumerate(mmps):
-            if m in true_mmps:
+            if m in trueEnz:
                 print(m)
-                j = true_mmps.index(m)
+                j = trueEnz.index(m)
                 pred.append(y_hat[:, i])
                 scores = analysis.save_to_dataframe(x_all, true_zscores[:, j], i, means, std, z_cutoff=0,
                                                     write_top_scores=True,
-                                                    dataloader=kukreja, mmp=m, save_path=generated_dir)
+                                                    dataloader=dataloader, mmp=m, save_path=generated_dir)
                 plotter.true_pred_ranked_scatter_z(scores, generated_dir, m)
                 plotter.confidence_ranked_scatter_z(scores, generated_dir, m)
                 plotter.confusion(scores['Cleaved true'], scores['Cleaved pred'], generated_dir, m)
@@ -794,7 +797,7 @@ def prediction(data_path_kukreja, gen_data, generated_dir, true_zscores=None, tr
 
     
     print("Calculated confidence")
-    analysis.eval_all_mmp(means, x_all, kukreja, generated_dir, z_score_cutoff=0)
+    analysis.eval_all_mmp(means, x_all, dataloader, generated_dir, z_score_cutoff=0)
     
     for i,m in enumerate(mmps):
         if i == 0:
@@ -806,7 +809,7 @@ def prediction(data_path_kukreja, gen_data, generated_dir, true_zscores=None, tr
                 os.remove(os.path.join(generated_dir, 'all_scores.csv'))
         print("Iterating over", m)
         scores = analysis.save_to_dataframe(x_all, None, i, means, std, z_cutoff=0, write_top_scores=True,
-                                            find_matches=True, dataloader=kukreja, mmp=m, save_path=generated_dir,
+                                            find_matches=True, dataloader=dataloader, mmp=m, save_path=generated_dir,
                                             top=number_top_candidates)
         plotter.confidence_ranked_scatter_z(scores, generated_dir, m)
         confidence_threshold = plotter.confidence_histogram(scores, generated_dir, m)
@@ -815,9 +818,9 @@ def prediction(data_path_kukreja, gen_data, generated_dir, true_zscores=None, tr
     return means, std
 
 
-def predict_scores_simple(substrates, checkpoint_dir='../weights/', save_dir='outputs/', model_architecture='transformer'):
+def predict_scores_simple(substrates, dataPath, checkpoint_dir='../weights/', save_dir='outputs/', model_architecture='transformer'):
     data_dir = cleavenet.utils.get_data_dir()
-    data_path = os.path.join(data_dir, "kukreja.csv")
+    data_path = os.path.join(data_dir, dataPath)
     pred_zscores, std_zscores = cleavenet.models.prediction(data_path,
                                                             substrates,
                                                             save_dir,
@@ -825,19 +828,19 @@ def predict_scores_simple(substrates, checkpoint_dir='../weights/', save_dir='ou
                                                             checkpoint_dir=checkpoint_dir)
     return pred_zscores, std_zscores
 
-def simple_inference(num_seqs, repeat_penalty, temperature):
+def simple_inference(num_seqs, repeat_penalty, temperature, dataPath, dataset):
     data_dir = cleavenet.utils.get_data_dir()
-    data_path = os.path.join(data_dir, "kukreja.csv")
-    kukreja = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='autoreg', test_split=0.2,
-                                                dataset='kukreja')
+    data_path = os.path.join(data_dir, dataPath)
+    dataloader = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='autoreg', test_split=0.2,
+                                                dataset=dataset)
     # From dataloader get necessary variables
-    start_id = kukreja.char2idx[kukreja.START]
+    start_id = dataloader.char2idx[dataloader.START]
     # Load model
     model, checkpoint_path = cleavenet.models.load_generator_model(model_type='transformer',
                                                                    training_scheme='rounded')
     # Fake run to load data and build model
     conditioning_tag_fake = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
-    generated_seq = cleavenet.models.inference(model, kukreja, causal=True, seq_len=11,
+    generated_seq = cleavenet.models.inference(model, dataloader, causal=True, seq_len=11,
                                                penalty=1, # no penalty
                                                verbose=False,
                                                conditioning_tag=conditioning_tag_fake,
@@ -850,10 +853,11 @@ def simple_inference(num_seqs, repeat_penalty, temperature):
             model.built=True
             model.load_weights(checkpoint_path)  # Load model weights
             # Generate using loaded weights
-            generated_seq = cleavenet.models.inference(model, kukreja, causal=True, seq_len=11,
+            generated_seq = cleavenet.models.inference(model, dataloader, 
+            										   scausal=True, eq_len=11,
                                                        penalty=repeat_penalty,
                                                        verbose=False,
                                                        conditioning_tag=[conditioning_tag[i]], temperature=temperature)
             #tokenized_seqs.append(generated_seq)
-            untokenized_seqs.append(''.join(kukreja.idx2char[generated_seq]))
+            untokenized_seqs.append(''.join(dataloader.idx2char[generated_seq]))
     return untokenized_seqs

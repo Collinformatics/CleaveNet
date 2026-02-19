@@ -73,7 +73,7 @@ class DataLoader(object):
 				self.y_test = get_data(self.out_path + 'y_test.csv', index_col=None, names=colnames).values
 		else:
 			os.makedirs(self.out_path)
-			print('Splits directory created:', self.out_path)
+			print('Splits directory created (1):', self.out_path)
 			#Load data
 			data = self.load_zscore_data()
 			self.sequences = data.index.to_list()
@@ -130,7 +130,7 @@ class DataLoader(object):
 		Load z-scored protease-substrate data from path
 		"""
 		df_z = pd.read_csv(self.data_path, header=0)
-		df_z = df_z.dropna(how='all', axis=1)
+		df_z = df_z.dropna(how='all', axis=1)	
 		if self.dataset == 'kukreja' or self.dataset == 'kukreja_rounded':
 		    df_z = df_z.drop('construct', axis=1)
 		elif self.dataset == 'bhatia': # Remove all seqs not == 10 residues in length (this is outside training task)

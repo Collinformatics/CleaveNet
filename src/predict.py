@@ -34,42 +34,40 @@ eval_sequences = input_df.index.to_list()
 # Define column names
 if 'kukreja' in args.path_to_sequence_csv:
 	from cleavenet.utils import mmps
+	dataPath = "kukreja.csv"
+	dataset = 'kukreja'
 	trueEnz = mmps
 else:
 	from pathlib import Path
 	parts = Path(args.path_to_sequence_csv).parts
+	trueEnz = [parts[0]]
 	for part in parts:
-		print(part)
 		if ' - ' in part and 'AA' in part:
-			print(1)
-			colnames = dataset.split(' - ')[0]
+			dataPath = f'{part}.csv'.replace('_rounded', '')
+			dataset = part.split(' - ')[0]
+			trueEnz = [dataset]
 			break
-		else:
-			colnames = dataset
-print(f'\nCol: {colname}\n')
-
-sys.exit()
 
 true_scores=None
 if args.path_to_zscores is not None:
     if args.no_csv_header:
-        true_scores = pd.read_csv(args.path_to_zscores, names=mmps).to_numpy()
+        true_scores = pd.read_csv(args.path_to_zscores, names=trueEnz).to_numpy()
     else:
         true_scores = pd.read_csv(args.path_to_zscores)
         trueEnz = true_scores.columns.to_list()
         true_scores = true_scores.to_numpy()
-#data_dir = cleavenet.utils.get_data_dir()
-#data_path = os.path.join(data_dir, "kukreja.csv")
-
-
+data_dir = cleavenet.utils.get_data_dir()
+data_path = os.path.join(data_dir, dataPath)
 
 # Load in dataloader
-kukreja = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='autoreg', test_split=0.2, dataset=dataset)
+dataloader = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='autoreg', test_split=0.2, dataset=dataset)
 
 k_pred_zscores, k_std_zscores = cleavenet.models.prediction(data_path,
                                                             eval_sequences,
                                                             args.save_dir,
+                                                            dataset=dataset,
                                                             checkpoint_dir='weights/',
                                                             predictor_model_type=args.model_architecture,
                                                             true_zscores=true_scores,
-                                                            trueEnz=trueEnz)
+                                                            trueEnz=trueEnz,
+                                                            )
