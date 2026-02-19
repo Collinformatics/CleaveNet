@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-from cleavenet.utils import mmps
 
 def pad(sequence, max_seq_len=10, pad_token='-'):
     seq_len = len(sequence)
@@ -40,6 +39,19 @@ class DataLoader(object):
 		self.task = task
 		np.random.seed(self.seed)
 		random.seed(self.seed)
+		
+		# Define column names
+		if dataset == 'kukreja':
+			from cleavenet.utils import mmps
+			colnames = mmps
+		else:
+			if ' - ' in dataset:
+				colnames = dataset.split(' - ')[0]
+			else:
+				colnames = dataset
+			colnames = [colnames]
+		#print(f'Columns: {colnames}')
+      		
 
 		# Set save paths
 		self.out_path = os.path.join('splits/', self.dataset+'/') # One split per dataset
@@ -49,21 +61,16 @@ class DataLoader(object):
 			shutil.rmtree(self.out_path)  # =================== Remove Me ===================
 		    
 		if os.path.exists(self.out_path):
-			if dataset == 'kukreja':
-				names = mmps
-			else:
-				names = dataset
-      		
 			print("Splits previously written to file")
 			self.X = list(get_data(self.out_path + 'X_all.csv', names=['sequence']).index)
-			self.y = get_data(self.out_path + 'y_all.csv', index_col=None, names=mmps).values
+			self.y = get_data(self.out_path + 'y_all.csv', index_col=None, names=colnames).values
 			self.sequences = self.X
 			print(f'X:\n{self.X}\n\nY:\n{self.y}\n\n')
 			if test_split > 0:
 				self.X_train = list(get_data(self.out_path + 'X_train.csv', names=['sequence']).index)
-				self.y_train = get_data(self.out_path + 'y_train.csv', index_col=None, names=mmps).values
+				self.y_train = get_data(self.out_path + 'y_train.csv', index_col=None, names=colnames).values
 				self.X_test = list(get_data(self.out_path + 'X_test.csv', names=['sequence']).index)
-				self.y_test = get_data(self.out_path + 'y_test.csv', index_col=None, names=mmps).values
+				self.y_test = get_data(self.out_path + 'y_test.csv', index_col=None, names=colnames).values
 		else:
 			os.makedirs(self.out_path)
 			print('Splits directory created:', self.out_path)
@@ -105,13 +112,13 @@ class DataLoader(object):
 
 		# If using generator
 		if task == 'generator':
-			train_data = pd.DataFrame(self.y_train, columns=mmps)
+			train_data = pd.DataFrame(self.y_train, columns=colnames)
 			train_data['sequence'] = self.X_train
 			train_data = train_data.set_index('sequence')
 			self.X_train = train_data.index.to_list()
 			self.y_train = train_data.values
 
-			test_data = pd.DataFrame(self.y_test, columns=mmps)
+			test_data = pd.DataFrame(self.y_test, columns=colnames)
 			test_data['sequence'] = self.X_test
 			test_data = test_data.set_index('sequence')
 			self.X_test = test_data.index.to_list()
