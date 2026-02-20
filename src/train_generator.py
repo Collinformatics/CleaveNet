@@ -3,6 +3,7 @@ import datetime
 import os
 import random
 import sys
+import time
 
 import numpy as np
 import tensorflow as tf
@@ -54,19 +55,17 @@ if ' - ' in args.data_path and ' AA' in args.data_path:
     dataset = args.data_path.split(' - ')[0]
     fname = args.data_path.split(' - ')
     for s in fname:
-    	print(f's: {s}')
     	if ' AA' in s:
     		args.seq_len = int(s.strip(' AA'))
 else:
     dataset = args.data_path.strip('.csv')
-print(f'Training Dataset: {dataset}\n'
-      f'   Training Data: {data_path}\n'
-      f' Sequence Length: {args.seq_len}\n'
-      f' Training Scheme: {args.training_scheme}\n'
-      f'      Model Type: {args.model_type}')
-print(f'Round: {args.round}')
-print()
+# f'Training Dataset: {dataset}\n'
+print(f'Training Model: {args.model_type}\n'
+      f'Training Data: {data_path}\n'
+      f'Sequence Length: {args.seq_len}\n'
+      f'Training Scheme: {args.training_scheme}\n')
 
+import sys
 
 def main():
     if args.training_scheme == 'autoreg':
@@ -76,7 +75,7 @@ def main():
         dataloader = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='autoreg', test_split=0.2, dataset=dataset, rounded=True)
         #dataloader = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='autoreg', test_split=0.2, dataset=dataset, rounded=args.round)
         start_id = dataloader.char2idx[dataloader.START]
-        end_id = dataloader.char2idx[dataloader.STOP]
+        end_id = dataloader.char2idx[dataloader.STOP]   
         print("start_id", start_id)
         print("stop_id", end_id)
 
@@ -213,7 +212,8 @@ def main():
     train_summary_writer = tf.summary.create_file_writer(train_log_dir)
     val_log_dir = os.path.join('logs'+model_label, '{}_GEN_val'.format(current_time))
     val_summary_writer = tf.summary.create_file_writer(val_log_dir)
-
+    
+    timeStart = time.time()
     for epoch in range(args.num_epochs):
         print("epoch", epoch)
         pbar = tqdm(range(int(len(dataloader.X_train) // args.batch_size)))
@@ -282,7 +282,12 @@ def main():
                 print(f"Val acc: {val_acc:.4f}")
                 model.save_weights(os.path.join(save_dir, "{}_epoch_{}.weights.h5".format("model", epoch)))
                 best_val_loss = val_loss
-
+    
+    timeEnd = time.time()
+    timeTrain = timeEnd - timeStart
+    timeItr = args.num_epochs / timeTrain
+    timeTrain = round((timeTrain / 60), 2)
+    print(f'Training Time: {timeTrain:,}min, {timeItr}epoch/s')
     save_file = save_dir + '/best_loss.csv'
     with open(save_file, 'w') as f:
         f.write(str(best_val_loss))
