@@ -54,17 +54,17 @@ class DataLoader(object):
 
 		# Set save paths
 		self.out_path = os.path.join('splits/', self.dataset+'/') # One split per dataset
-
-		if os.path.exists(self.out_path): # =================== Remove Me ===================
-			import shutil                 # =================== Remove Me ===================
-			shutil.rmtree(self.out_path)  # =================== Remove Me ===================
+		
+		# Delete dataloader
+		#if os.path.exists(self.out_path): # =================== Remove Me ===================
+		#	import shutil                 # =================== Remove Me ===================
+		#	shutil.rmtree(self.out_path)  # =================== Remove Me ===================
 		    
 		if os.path.exists(self.out_path):
 			print("Splits previously written to file")
 			self.X = list(get_data(self.out_path + 'X_all.csv', names=['sequence']).index)
 			self.y = get_data(self.out_path + 'y_all.csv', index_col=None, names=colnames).values
 			self.sequences = self.X
-			print(f'X:\n{self.X}\n\nY:\n{self.y}\n\n')
 			if test_split > 0:
 				self.X_train = list(get_data(self.out_path + 'X_train.csv', names=['sequence']).index)
 				self.y_train = get_data(self.out_path + 'y_train.csv', index_col=None, names=colnames).values
@@ -72,7 +72,7 @@ class DataLoader(object):
 				self.y_test = get_data(self.out_path + 'y_test.csv', index_col=None, names=colnames).values
 		else:
 			os.makedirs(self.out_path)
-			print('Splits directory created (1):', self.out_path)
+			print('Splits directory created:', self.out_path)
 			#Load data
 			data = self.load_zscore_data()
 			self.sequences = data.index.to_list()
@@ -81,7 +81,7 @@ class DataLoader(object):
 				# These are artificially created in csv processing
 				self.sequences = [seq.replace(' ', '') for seq in self.sequences]
 			if rounded:
-				print(f'\n\nData:\n{data}\n\n')
+				print(f'\nData:\n{data}\n\n')
 				for col in data.columns:
 					# Round to nearest 0.5
 					data[col] = data[col].apply(lambda x: custom_round(x, base=0.5))
@@ -228,7 +228,7 @@ def get_data(path, index_col=0, names=None):
     else:
         data = pd.read_csv(path, index_col=index_col)
     
-    print(f'\n Get Data: {names}\n{data}\n\n') 
+    #print(f'\n Get Data: {names}\n{data}\n\n') 
     return data
 
 

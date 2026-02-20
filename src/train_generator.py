@@ -12,8 +12,6 @@ from tqdm import tqdm
 import cleavenet
 from cleavenet.utils import get_data_dir
 
-# Suppress tensorflow message about gpu detection
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' # Comment out to inspect detection)
 
 # parse from terminal
 parser = argparse.ArgumentParser() ##
@@ -74,7 +72,7 @@ if ' - ' in args.data_path and ' AA' in args.data_path:
 else:
     dataset = args.data_path.strip('.csv')
 # f'Training Dataset: {dataset}\n'
-print(f'Training Model: {args.model_type}\n'
+print(f'\nTraining Model: {args.model_type}\n'
       f'Training Data: {data_path}\n'
       f'Sequence Length: {args.seq_len}\n'
       f'Training Scheme: {args.training_scheme}\n')
@@ -105,8 +103,9 @@ def main():
 	vocab_size = len(dataloader.char2idx)
 	print("vocab length",  len(dataloader.char2idx))
 	print("vocab size",  vocab_size)
-	print("Train samples", len(dataloader.X_train), "Test samples", len(dataloader.X_test))
-
+	print(f'Training samples: {len(dataloader.X_train)}')
+	print(f'Test samples: {len(dataloader.X_test)}\n')
+	
 	if args.condition == 'conditional' or args.condition == 'randomize':
 		conditioning_tag=dataloader.y_train
 		conditioning_tag_test=dataloader.y_test
@@ -237,8 +236,8 @@ def main():
 	pathDir = os.path.join(pathModel, model_label[1:], cond)
 	if not os.path.exists(pathDir):
 		os.makedirs(pathDir)
+	idx = 0
 	while True:
-		idx = 0
 		pathModelWeights = os.path.join(pathDir, f'model_{idx}.weights.h5')
 		if not os.path.exists(pathModelWeights):
 			pathModelLoss = os.path.join(pathDir, f'model_{idx}_loss.txt')
@@ -325,9 +324,9 @@ def main():
 				# Save best weights in weights dir
 				model.save_weights(pathModelWeights)
 				with open(pathModelLoss, 'w') as file:
-					file.write(str(best_val_loss))
+					file.write(str(best_val_loss)+'\n')
 
-
+	# Job summary
 	timeEnd = time.time()
 	timeTrain = timeEnd - timeStart
 	timeItr = round((args.num_epochs / timeTrain), 2)
