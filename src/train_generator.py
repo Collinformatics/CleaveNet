@@ -285,7 +285,7 @@ def main():
     
     timeEnd = time.time()
     timeTrain = timeEnd - timeStart
-    timeItr = args.num_epochs / timeTrain
+    timeItr = round((args.num_epochs / timeTrain), 2)
     timeTrain = round((timeTrain / 60), 2)
     print(f'Training Time: {timeTrain:,}min, {timeItr}epoch/s')
     save_file = save_dir + '/best_loss.csv'
