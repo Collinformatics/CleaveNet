@@ -652,7 +652,8 @@ def load_predictor_model(model_type, checkpoint_path, batch_size, mask_zero=Fals
 	model.summary()
 	print(f'\nPath: {checkpoint_path}\n')
 	import sys
-	sys.exit()
+	#sys.exit()
+	
 	model.load_weights(checkpoint_path)  # load weights
 	return model
 
@@ -833,7 +834,7 @@ def simple_inference(num_seqs, repeat_penalty, temperature, dataPath, dataset):
     data_path = os.path.join(data_dir, dataPath)
     dataloader = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='autoreg', test_split=0.2,
                                                 dataset=dataset)
-    # From dataloader get necessary variables
+    # From dataloader gFet necessary variables
     start_id = dataloader.char2idx[dataloader.START]
     # Load model
     model, checkpoint_path = cleavenet.models.load_generator_model(model_type='transformer',

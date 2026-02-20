@@ -27,8 +27,7 @@ class DataLoader(object):
 	Creates 1 test/train split for Dataset, or loads saved splits
 	Saves a char2idx dict mapping for each model
 	"""
-	def __init__(self, data_path, seed=0, task='predictor', model='bert', test_split=0.2, dataset='kukreja',
-			 use_dataloader=None, rounded=False):
+	def __init__(self, data_path, seed=0, task='predictor', model='bert', test_split=0.2, dataset='kukreja', use_dataloader=None, rounded=False):
 		self.seed = seed
 		self.model = model  # bert, autoregressive, regression
 		self.dataset = dataset
@@ -78,22 +77,22 @@ class DataLoader(object):
 			data = self.load_zscore_data()
 			self.sequences = data.index.to_list()
 			if dataset == 'kukreja':
-				# replace gaps in data in kukreja
-				# these are artificially created in csv processing
+				# Replace gaps in data in kukreja
+				# These are artificially created in csv processing
 				self.sequences = [seq.replace(' ', '') for seq in self.sequences]
 			if rounded:
 				print(f'\n\nData:\n{data}\n\n')
 				for col in data.columns:
-					data[col] = data[col].apply(lambda x: custom_round(x, base=0.5)) # round to nearest 0.5
+					# Round to nearest 0.5
+					data[col] = data[col].apply(lambda x: custom_round(x, base=0.5))
 			# Assign data
-			self.X = self.sequences  # sequences
+			self.X = self.sequences # sequences
 			self.y = data.values
 			np.savetxt(self.out_path + 'X_all.csv', self.X, delimiter=",", fmt='%s')
 			np.savetxt(self.out_path + 'y_all.csv', self.y, delimiter=",")
 			if test_split > 0:
-				self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.X, self.y,
-					                                                                    test_size=self.test_split,
-					                                                                    random_state=self.seed)
+				self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
+					self.X, self.y, test_size=self.test_split, random_state=self.seed)
 				np.savetxt(self.out_path + 'X_train.csv', self.X_train, delimiter=",", fmt='%s')
 				np.savetxt(self.out_path + 'y_train.csv', self.y_train, delimiter=",")
 				np.savetxt(self.out_path + 'X_test.csv', self.X_test, delimiter=",", fmt='%s')
@@ -123,6 +122,7 @@ class DataLoader(object):
 			test_data = test_data.set_index('sequence')
 			self.X_test = test_data.index.to_list()
 			self.y_test = test_data.values
+
 
 
 	def load_zscore_data(self):
@@ -229,7 +229,6 @@ def get_data(path, index_col=0, names=None):
         data = pd.read_csv(path, index_col=index_col)
     
     print(f'\n Get Data: {names}\n{data}\n\n') 
-    
     return data
 
 
@@ -319,7 +318,7 @@ def get_autoreg_batch(seqs, batch_size, dataloader, width=11, conditioning_tag=N
     # Add special chars
     batch_seqs = [np.append(np.append(np.array(start_idx), s), np.array(stop_idx)) for s in batch_seqs]
     slice_index = np.random.randint(0, len(batch_seqs[0])-width, size=len(batch_seqs)) # if context window less than length (not needed here)
-    
+
     target_seq = [s[slice_index[i]+1:slice_index[i]+width+1] for i, s in enumerate(batch_seqs)]
     if conditioning_tag is not None:
         batch_tags = [np.array(conditioning_tag[i]) for i in batch_inds]
