@@ -325,7 +325,7 @@ def main():
 				# Save best weights in weights dir
 				model.save_weights(pathModelWeights)
 				with open(pathModelLoss, 'w') as f:
-					f.write(f'Loss: {best_val_loss)}\n')
+					f.write(f'Loss: {best_val_loss}\n')
 					for action in parser._actions: # Write job params
 						if action.dest != "help": # skip help action
 							value = getattr(args, action.dest)
