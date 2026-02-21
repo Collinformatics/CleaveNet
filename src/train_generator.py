@@ -22,16 +22,16 @@ parser.add_argument(
 	"--batch-size", default=128, type=int, help="batch size"
 )
 parser.add_argument(
-	"--condition", default='randomize', type=str, help="`unconditional` for unconditional generation, `conditional` for conditional training with z-scores only, `randomize`, enables training of both schemes at 50%"
+	"--condition", default="randomize", type=str, help="`unconditional` for unconditional generation, `conditional` for conditional training with z-scores only, `randomize`, enables training of both schemes at 50%"
 )
 parser.add_argument(
-	"--data_path", default='kukreja.csv', type=str, help="file path for the training data"
+	"--data_path", default="kukreja.csv", type=str, help="file path for the training data"
 )
 parser.add_argument(
 	"--learning-rate", default=0.001, type=float, help="learning rate for LSTM"
 )
 parser.add_argument(
-	"--model-type", default='transformer', type=str, help="transformer or LSTM"
+	"--model-type", default="transformer", type=str, help="transformer or LSTM"
 )
 parser.add_argument(
 	"--d-model", default=64, type=int, help="model paramters"
@@ -46,9 +46,11 @@ parser.add_argument(
 	"--random-seed", default=0, type=int, help="random seed"
 )
 parser.add_argument(
+	"--round", action="store_true", help="round Z-scores"
+)
+parser.add_argument(
 	"--training-scheme", default='autoreg', type=str, help="`autoreg` for autoregressive training, `bert` for Bert MLM training"
 )
-
 
 args = parser.parse_args()
 args.model_type = args.model_type.lower()
@@ -75,16 +77,17 @@ else:
 print(f'\nTraining Model: {args.model_type}\n'
       f'Training Data: {data_path}\n'
       f'Sequence Length: {args.seq_len}\n'
-      f'Training Scheme: {args.training_scheme}\n')
+      f'Training Scheme: {args.training_scheme}\n'
+      f'Round Z-scores: {args.round}\n')
 
-import sys
 
 def main():
 	if args.training_scheme == 'autoreg':
 		causal=True
 		model_label = '/AUTOREG_'+args.model_type
 		args.seq_len+=1 # account for start token
-		dataloader = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='autoreg', test_split=0.2, dataset=dataset, rounded=True)
+		#dataloader = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='autoreg', test_split=0.2, dataset=dataset, rounded=True)
+		dataloader = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='autoreg', test_split=0.2, dataset=dataset, rounded=args.round)
 		start_id = dataloader.char2idx[dataloader.START]
 		end_id = dataloader.char2idx[dataloader.STOP]   
 		print("start_id", start_id)
@@ -226,14 +229,13 @@ def main():
 	
 	# Model path
 	#print(f'\nModel label: {model_label}\nCondition: {args.condition}\nScheme: {args.training_scheme}')
-	pathModel = os.path.join(os.getcwd(), 'weights') 
 	if args.condition == 'randomize':
 		cond = 'both'
-		if args.training_scheme == 'autoreg':
+		if args.training_scheme == 'autoreg' and args.round:
 			cond += '_rounded'
 	else:
 		cond = args.condition
-	pathDir = os.path.join(pathModel, model_label[1:], cond)
+	pathDir = os.path.join('weights', model_label[1:], cond)
 	if not os.path.exists(pathDir):
 		os.makedirs(pathDir)
 	idx = 0
@@ -244,7 +246,6 @@ def main():
 			break
 		idx += 1
 	print(f'\nSaving the best model weights at: {pathModelWeights}\n')
-
 
 	# Train generator
 	bestEpoch = ''
@@ -323,8 +324,13 @@ def main():
 				
 				# Save best weights in weights dir
 				model.save_weights(pathModelWeights)
-				with open(pathModelLoss, 'w') as file:
-					file.write(str(best_val_loss)+'\n')
+				with open(pathModelLoss, 'w') as f:
+					f.write(f'Loss: {best_val_loss)}\n')
+					for action in parser._actions: # Write job params
+						if action.dest != "help": # skip help action
+							value = getattr(args, action.dest)
+							f.write(f'{",".join(action.option_strings)}={value}\n')
+					
 
 	# Job summary
 	timeEnd = time.time()
@@ -332,11 +338,12 @@ def main():
 	timeItr = round((args.num_epochs / timeTrain), 2)
 	timeTrain = round((timeTrain / 60), 2)
 	print(f'\nBest model weights saved at: {pathModelWeights}')
-	print(f'Loss: {round(best_val_loss,2)}')
-	print(f'Training Time: {timeTrain:,}min, {timeItr}epoch/s')
+	print(f'Loss: {float(best_val_loss)}')
+	print(f'Training Time: {timeTrain:,}min, {timeItr}epoch/s\n')
 	save_file = save_dir + '/best_loss.csv'
 	with open(save_file, 'w') as f:
-		f.write(str(best_val_loss))
+		f.write(best_val_loss + '\n')
+
 
 
 
