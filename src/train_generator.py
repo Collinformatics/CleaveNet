@@ -338,11 +338,12 @@ def main():
 	timeItr = round((args.num_epochs / timeTrain), 2)
 	timeTrain = round((timeTrain / 60), 2)
 	print(f'\nBest model weights saved at: {pathModelWeights}')
+	print(f'Summary: {pathModelLoss}')
 	print(f'Loss: {float(best_val_loss)}')
 	print(f'Training Time: {timeTrain:,}min, {timeItr}epoch/s\n')
 	save_file = save_dir + '/best_loss.csv'
 	with open(save_file, 'w') as f:
-		f.write(best_val_loss + '\n')
+		f.write(str(best_val_loss) + '\n')
 
 
 
