@@ -93,6 +93,8 @@ def main():
 		print("start_id", start_id)
 		print("stop_id", end_id)
 	elif args.training_scheme == 'bert':
+		if args.round:
+			args.round = False
 		causal=False
 		model_label='/BERT_'+args.model_type
 		dataloader = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='bert', test_split=0.2, dataset=dataset)
@@ -231,10 +233,10 @@ def main():
 	#print(f'\nModel label: {model_label}\nCondition: {args.condition}\nScheme: {args.training_scheme}')
 	if args.condition == 'randomize':
 		cond = 'both'
-		if args.training_scheme == 'autoreg' and args.round:
-			cond += '_rounded'
 	else:
 		cond = args.condition
+	if args.training_scheme != 'bert' and args.round:
+		cond += '_rounded'
 	pathDir = os.path.join('weights', model_label[1:], cond)
 	if not os.path.exists(pathDir):
 		os.makedirs(pathDir)
