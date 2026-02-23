@@ -102,17 +102,28 @@ else:
 tokenized_seqs = []
 untokenized_seqs = []
 
+# build model with dummy input
+dummy_input = tf.zeros((1, seqLen+1))  # match your sequence length
+_ = model(dummy_input)  # runs a forward pass, creates all variables
+
+# now load weights
+model.load_weights(checkpoint_path)
+
 for i in range(len(conditioning_tag)):
-    for j in tqdm(range(args.num_seqs)):
-        model.built=True
-        model.load_weights(checkpoint_path)  # Load model weights
-        # Generate using loaded weights
-        generated_seq = cleavenet.models.inference(model, dataloader, causal=True, seq_len=11,
-                                                   penalty=args.repeat_penalty,
-                                                   verbose=False,
-                                                   conditioning_tag=[conditioning_tag[i]], temperature=args.temperature)
-        tokenized_seqs.append(generated_seq)
-        untokenized_seqs.append(''.join(dataloader.idx2char[generated_seq]))
+	for j in tqdm(range(args.num_seqs)):
+		#model.built=True
+		#model.load_weights(checkpoint_path)  # Load model weights
+		#print(1)
+		#sys.exit()
+		
+		# Generate using loaded weights
+		generated_seq = cleavenet.models.inference(model, dataloader, causal=True, seq_len=11,
+					                               penalty=args.repeat_penalty,
+					                               verbose=False,
+					                               conditioning_tag=[conditioning_tag[i]],
+					                               temperature=args.temperature)
+		tokenized_seqs.append(generated_seq)
+		untokenized_seqs.append(''.join(dataloader.idx2char[generated_seq]))
 
 if not os.path.exists(args.output_dir):
     os.makedirs(args.output_dir)

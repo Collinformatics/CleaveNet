@@ -126,6 +126,8 @@ def main():
 	if args.model_type == 'transformer':
 		num_layers = 3
 		#num_layers = 2
+		if args.condition == 'unconditional':
+			num_layers = 2
 		num_heads = 6
 		dropout = 0.25
 		if causal:

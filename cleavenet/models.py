@@ -602,7 +602,6 @@ def load_generator_model(model_type, model_weights, training_scheme='uncondition
 		                        dff=d_model, # dense params
 		                        vocab_size=vocab_size,
 		                        dropout_rate=dropout)
-
 	elif model_type == 'lstm':
 		regu = 0.01
 		d_model = 64
@@ -614,9 +613,10 @@ def load_generator_model(model_type, model_weights, training_scheme='uncondition
 		model = AutoregressiveRNN(batch_size, vocab_size, d_embed, d_model, dropout,
 		                                           regu, seq_len, training=False, mask_zero=False, num_layers=num_layers)
 		checkpoint_path = os.path.join("weights/AUTOREG_lstm/20231016-133250_GEN/", model_weights)
-
-	print(f'\nLoading Model Weights: {checkpoint_path}')
-	sys.exit()
+	
+	print(f'\nModel Type: {model_type}\n'
+		  f'    Scheme: {training_scheme}')
+	print(f'Loading Model Weights: {checkpoint_path}')
 
 	if training_scheme == 'unconditional':
 		model.summary()
