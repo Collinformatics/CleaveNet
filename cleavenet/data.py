@@ -55,13 +55,14 @@ class DataLoader(object):
 		# Set save paths
 		self.out_path = os.path.join('splits/', self.dataset+'/') # One split per dataset
 		
-		# Delete dataloader
-		#if os.path.exists(self.out_path): # =================== Remove Me ===================
-		#	import shutil                 # =================== Remove Me ===================
-		#	shutil.rmtree(self.out_path)  # =================== Remove Me ===================
+		# Delete dataloader file
+		#if 'bhatia' not in self.out_path and 'kukreja' not in self.out_path:
+		#	if os.path.exists(self.out_path): # ================= Remove Me =================
+		#		import shutil                 # ================= Remove Me =================
+		#		shutil.rmtree(self.out_path)  # ================= Remove Me =================
 		    
 		if os.path.exists(self.out_path):
-			print("Splits previously written to file")
+			print(f'Loading Splits: {self.out_path}')
 			self.X = list(get_data(self.out_path + 'X_all.csv', names=['sequence']).index)
 			self.y = get_data(self.out_path + 'y_all.csv', index_col=None, names=colnames).values
 			self.sequences = self.X
@@ -72,7 +73,7 @@ class DataLoader(object):
 				self.y_test = get_data(self.out_path + 'y_test.csv', index_col=None, names=colnames).values
 		else:
 			os.makedirs(self.out_path)
-			print('Splits directory created:', self.out_path)
+			print(f'Saving Splits: {self.out_path}')
 			#Load data
 			data = self.load_zscore_data()
 			self.sequences = data.index.to_list()
@@ -81,7 +82,7 @@ class DataLoader(object):
 				# These are artificially created in csv processing
 				self.sequences = [seq.replace(' ', '') for seq in self.sequences]
 			if rounded:
-				print(f'\nData:\n{data}\n\n')
+				#print(f'\nData:\n{data}\n\n')
 				for col in data.columns:
 					# Round to nearest 0.5
 					data[col] = data[col].apply(lambda x: custom_round(x, base=0.5))
@@ -97,8 +98,6 @@ class DataLoader(object):
 				np.savetxt(self.out_path + 'y_train.csv', self.y_train, delimiter=",")
 				np.savetxt(self.out_path + 'X_test.csv', self.X_test, delimiter=",", fmt='%s')
 				np.savetxt(self.out_path + 'y_test.csv', self.y_test, delimiter=",")
-        
-        # sys.exit()
 
 		# Create vocab
 		if not use_dataloader:

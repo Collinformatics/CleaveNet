@@ -8,6 +8,8 @@ import cleavenet.data
 from cleavenet import analysis, plotter
 from cleavenet.utils import mmps 
 
+import sys
+
 
 class TransformerSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
     """
@@ -560,61 +562,66 @@ class AutoregressiveRNN(tf.keras.Model):
         m.update_state(y, y_hat)
         return m.result()
 
-def load_generator_model(model_type, training_scheme='unconditional', parent_dir=''):
-    # Load relevant checkpoints, and model parameters
-    batch_size = 1                                                                                                                                  
+def load_generator_model(model_type, model_weights, training_scheme='unconditional', parent_dir=''):
+	if not model_weights.endswith('.weights.h5'):
+		 model_weights += '.weights.h5'
 
-    if model_type == 'transformer':
-        vocab_size = 22
-        num_layers = 2
-        num_heads = 6
-        dropout = 0
-        d_model = 64
-        if training_scheme == 'unconditional':
-            checkpoint_path = os.path.join(parent_dir+"weights/AUTOREG_transformer/unconditional/", "model.h5")
-        elif training_scheme == 'conditional':
-            num_layers=3
-            checkpoint_path = os.path.join(parent_dir+"weights/AUTOREG_transformer/conditional/", "model.h5")
-        elif training_scheme == 'both':
-            num_layers=3
-            checkpoint_path = os.path.join(parent_dir+"weights/AUTOREG_transformer/both/", "model.h5")
-        elif training_scheme == 'rounded':
-            num_layers=3
-            d_model = 64
-            checkpoint_path = os.path.join("weights/AUTOREG_transformer/both_rounded/", "model.h5") # rounded to tenth
-        if training_scheme == 'unconditional':
-            model = TransformerDecoder(
-                num_layers=num_layers,
-                d_model=d_model,
-                num_heads=num_heads,
-                dff=d_model,  # dense params
-                vocab_size=vocab_size,
-                dropout_rate=dropout)
-        else:
-            model = cleavenet.models.ConditionalTransformerDecoder(
-                                num_layers=num_layers,
-                                d_model=d_model,
-                                num_heads=num_heads,
-                                dff=d_model, # dense params
-                                vocab_size=vocab_size,
-                                dropout_rate=dropout)
+	# Load relevant checkpoints, and model parameters
+	batch_size = 1
+	if model_type == 'transformer':
+		vocab_size = 22
+		num_layers = 2
+		num_heads = 6
+		dropout = 0
+		d_model = 64
+		if training_scheme == 'unconditional':
+		    checkpoint_path = os.path.join(parent_dir+"weights/AUTOREG_transformer/unconditional/", model_weights)
+		elif training_scheme == 'conditional':
+		    num_layers=3
+		    checkpoint_path = os.path.join(parent_dir+"weights/AUTOREG_transformer/conditional/", model_weights)
+		elif training_scheme == 'both':
+		    num_layers=3
+		    checkpoint_path = os.path.join(parent_dir+"weights/AUTOREG_transformer/both/", model_weights)
+		elif training_scheme == 'rounded':
+		    num_layers=3
+		    d_model = 64
+		    checkpoint_path = os.path.join("weights/AUTOREG_transformer/both_rounded/", model_weights) # rounded to tenth
+		if training_scheme == 'unconditional':
+		    model = TransformerDecoder(
+		        num_layers=num_layers,
+		        d_model=d_model,
+		        num_heads=num_heads,
+		        dff=d_model,  # dense params
+		        vocab_size=vocab_size,
+		        dropout_rate=dropout)
+		else:
+		    model = cleavenet.models.ConditionalTransformerDecoder(
+		                        num_layers=num_layers,
+		                        d_model=d_model,
+		                        num_heads=num_heads,
+		                        dff=d_model, # dense params
+		                        vocab_size=vocab_size,
+		                        dropout_rate=dropout)
 
-    elif model_type == 'lstm':
-        regu = 0.01
-        d_model = 64
-        dropout = 0.2
-        d_embed = 64
-        seq_len = 11
-        num_layers = 4
-        vocab_size=22
-        model = AutoregressiveRNN(batch_size, vocab_size, d_embed, d_model, dropout,
-                                                   regu, seq_len, training=False, mask_zero=False, num_layers=num_layers)
-        checkpoint_path = os.path.join("weights/AUTOREG_lstm/20231016-133250_GEN/", "model.h5")
+	elif model_type == 'lstm':
+		regu = 0.01
+		d_model = 64
+		dropout = 0.2
+		d_embed = 64
+		seq_len = 11
+		num_layers = 4
+		vocab_size=22
+		model = AutoregressiveRNN(batch_size, vocab_size, d_embed, d_model, dropout,
+		                                           regu, seq_len, training=False, mask_zero=False, num_layers=num_layers)
+		checkpoint_path = os.path.join("weights/AUTOREG_lstm/20231016-133250_GEN/", model_weights)
 
-    if training_scheme == 'unconditional':
-        model.summary()
-        model.load_weights(checkpoint_path)
-    return model, checkpoint_path
+	print(f'\nLoading Model Weights: {checkpoint_path}')
+	sys.exit()
+
+	if training_scheme == 'unconditional':
+		model.summary()
+		model.load_weights(checkpoint_path)
+	return model, checkpoint_path
 
 def load_predictor_model(model_type, checkpoint_path, batch_size, mask_zero=False):
 	d_model = 32
@@ -650,9 +657,10 @@ def load_predictor_model(model_type, checkpoint_path, batch_size, mask_zero=Fals
 	fake_batch = np.array([[21, 20, 14, 8, 9, 13, 10 , 9 ,16, 17 , 3]])
 	model(fake_batch, training=False) # build model in TF
 	model.summary()
+	
 	print(f'\nPath: {checkpoint_path}\n')
 	import sys
-	#sys.exit()
+	sys.exit()
 	
 	model.load_weights(checkpoint_path)  # load weights
 	return model
@@ -716,7 +724,7 @@ def inference(model, dataloader, causal=False, seq_len=10, penalty=1, verbose=Fa
     return generated_seq
 
 
-def prediction(dataPath, gen_data, generated_dir, dataset, true_zscores=None, trueEnz=None, checkpoint_dir='weights/', predictor_model_type='transformer', number_top_candidates=50):
+def prediction(dataPath, gen_data, generated_dir, dataset, model_weights, true_zscores=None, trueEnz=None, checkpoint_dir='weights/', predictor_model_type='transformer', number_top_candidates=50):
     if not os.path.exists(generated_dir):
         os.mkdir(generated_dir)
     if predictor_model_type == 'transformer':
@@ -752,7 +760,7 @@ def prediction(dataPath, gen_data, generated_dir, dataset, true_zscores=None, tr
     for e_num, ensemble in enumerate(ensembles):
         print("Running", e_num, ensemble)
         print("EVALUATING SEQUENCES FROM", generated_dir)
-        checkpoint_path = os.path.join(checkpoint_dir, ensemble, "model.h5")
+        checkpoint_path = os.path.join(checkpoint_dir, ensemble, model_weights)
         # Build and load predictor model
         model = cleavenet.models.load_predictor_model(model_type=predictor_model_type, checkpoint_path=checkpoint_path,
                                                       batch_size=batch_size, mask_zero=True)

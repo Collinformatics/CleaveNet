@@ -235,7 +235,7 @@ def main():
 		cond = 'both'
 	else:
 		cond = args.condition
-	if args.training_scheme != 'bert' and args.round:
+	if args.condition != 'unconditional' and args.training_scheme != 'bert' and args.round:
 		cond += '_rounded'
 	pathDir = os.path.join('weights', model_label[1:], cond)
 	if not os.path.exists(pathDir):

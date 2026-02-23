@@ -7,19 +7,21 @@ import cleavenet
 from cleavenet.utils import get_data_dir
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--path-to-sequence-csv", type=str, default='/data/',
-                    help="path to csv file where each line should be a new peptide sequence")
-parser.add_argument("--path-to-zscores", type=str, default=None,
-                    help="if you want to measure our model predictions against your data, provide a path to csv file \
-                          where each line should be a corresponding z-score, see 'splits/y_all.csv' for an example. If \
-                          using different MMPS, the first row of this file should correspond to the MMPs in each row. "
-                         "The default is to assign each column to MMPs in the order we analyzed the data")
-parser.add_argument("--no-csv-header", action='store_true',
-                    help="If using data splits from kukreja as described in the README, we store the MMP headers separately. Use this flag to indicate that")
-parser.add_argument("--save-dir", type=str, default='outputs/',
-                    help="directory to save model outputs too")
-parser.add_argument("--model-architecture", type=str, default='transformer',
-                    help="'transformer' or 'lstm, for most use cases the default should be used'")
+parser.add_argument(
+	"--path-to-sequence-csv", type=str, default='/data/', help="path to csv file where each line should be a new peptide sequence"
+)
+parser.add_argument(
+	"--path-to-zscores", type=str, default=None, help="if you want to measure our model predictions against your data, provide a path to csv file where each line should be a corresponding z-score, see 'splits/y_all.csv' for an example. If using different MMPS, the first row of this file should correspond to the MMPs in each row. The default is to assign each column to MMPs in the order we analyzed the data"
+)
+parser.add_argument(
+	"--no-csv-header", action='store_true', help="If using data splits from kukreja as described in the README, we store the MMP headers separately. Use this flag to indicate that"
+)
+parser.add_argument(
+	"--save-dir", type=str, default='outputs/', help="directory to save model outputs too"
+)
+parser.add_argument(
+"--model-architecture", type=str, default='transformer', help="'transformer' or 'lstm, for most use cases the default should be used'"
+)
 args = parser.parse_args()
 
 

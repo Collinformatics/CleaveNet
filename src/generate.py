@@ -12,36 +12,76 @@ from cleavenet.data import custom_round
 from cleavenet.utils import mmps
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--num-seqs", default=100, type=int,
-                    help="number of sequences to be generated")
-parser.add_argument("--output-dir", default="generated", type=str,
-                    help="Directory to store outputs ")
-parser.add_argument("--repeat-penalty", default=1.0, type=float,
-                    help="Repeat penalty factor, for no penalty use 1")
-parser.add_argument("--temperature", default=1.0, type=float,
-                    help="Sampling temperature, for standard sampling use 1. For less diverse use 0.7, for more diverse use >1")
-parser.add_argument("--z-scores", default=None, type=str,
-                    help="File containing z-scores for conditional generation")
+parser.add_argument(
+	"--data_path", default="kukreja.csv", type=str, help="file path for the training data"
+)
+parser.add_argument(
+	"--model_weights", default="model_0", type=str, help="file name for the model weights"
+)
+parser.add_argument(
+	"--num-seqs", default=100, type=int, help="number of sequences to be generated"
+)
+parser.add_argument(
+	"--output-dir", default="generated", type=str, help="Directory to store outputs "
+)
+parser.add_argument(
+	"--repeat-penalty", default=1.0, type=float, help="Repeat penalty factor, for no penalty use 1"
+)
+parser.add_argument(
+	"--temperature", default=1.0, type=float, help="Sampling temperature, for standard sampling use 1. For less diverse use 0.7, for more diverse use >1"
+)
+parser.add_argument(
+	"--z-scores", default=None, type=str, help="File containing z-scores for conditional generation"
+)
 args = parser.parse_args()
 
 tf.config.list_physical_devices('GPU')
 
+
+import sys
+
+
 # Load in dataloader
-data_dir = cleavenet.utils.get_data_dir()
-data_path = os.path.join(data_dir, "kukreja.csv")
-kukreja = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='autoreg', test_split=0.2,
-                                            dataset='kukreja')
+#data_dir = cleavenet.utils.get_data_dir()
+#data_path = os.path.join(data_dir, "kukreja.csv")
+
+if 'data/' in args.data_path:
+	data_path = args.data_path
+else:
+	data_path = os.path.join('data', args.data_path)
+
+# Evaluate data_path
+seqLen = None
+if ' - ' in args.data_path and ' AA' in args.data_path:
+    dataset = args.data_path.split(' - ')[0].replace('data/', '')
+    fname = args.data_path.split(' - ')
+    for s in fname:
+    	if ' AA' in s:
+    		seqLen = int(s.strip(' AA'))
+else:
+    dataset = args.data_path.strip('.csv')
+    seqLen = 10
+# f'Training Dataset: {dataset}\n'
+print(f'\nTraining Data: {data_path}\n'
+      #f'      Dataset: {dataset}\n'
+      f' Sequence Len: {seqLen}\n')
+
+
+dataloader = cleavenet.data.DataLoader(
+	data_path, seed=0, task='generator', model='autoreg', test_split=0.2, dataset=dataset
+)
 
 # From dataloader get necessary variables
-start_id = kukreja.char2idx[kukreja.START]
-vocab_size = len(kukreja.char2idx)
+start_id = dataloader.char2idx[dataloader.START]
+vocab_size = len(dataloader.char2idx)
 
 # Load model
-model, checkpoint_path = cleavenet.models.load_generator_model(model_type='transformer',
-                                                               training_scheme='rounded')
+model, checkpoint_path = cleavenet.models.load_generator_model(
+	model_type='transformer', model_weights=args.model_weights, training_scheme='rounded'
+)
 # Fake run to load data in model (have to do this for conditional models since run in eager mode)
 conditioning_tag_fake = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
-generated_seq = cleavenet.models.inference(model, kukreja, causal=True, seq_len=11,
+generated_seq = cleavenet.models.inference(model, dataloader, causal=True, seq_len=seqLen+1,
                                            penalty=1, # no penalty
                                            verbose=True,
                                            conditioning_tag=conditioning_tag_fake,
@@ -67,12 +107,12 @@ for i in range(len(conditioning_tag)):
         model.built=True
         model.load_weights(checkpoint_path)  # Load model weights
         # Generate using loaded weights
-        generated_seq = cleavenet.models.inference(model, kukreja, causal=True, seq_len=11,
+        generated_seq = cleavenet.models.inference(model, dataloader, causal=True, seq_len=11,
                                                    penalty=args.repeat_penalty,
                                                    verbose=False,
                                                    conditioning_tag=[conditioning_tag[i]], temperature=args.temperature)
         tokenized_seqs.append(generated_seq)
-        untokenized_seqs.append(''.join(kukreja.idx2char[generated_seq]))
+        untokenized_seqs.append(''.join(dataloader.idx2char[generated_seq]))
 
 if not os.path.exists(args.output_dir):
     os.makedirs(args.output_dir)
