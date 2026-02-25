@@ -16,9 +16,6 @@ parser.add_argument(
 	"--data_path", default="kukreja.csv", type=str, help="file path for the training data"
 )
 parser.add_argument(
-	"--model_weights", default="model_0", type=str, help="file name for the model weights"
-)
-parser.add_argument(
 	"--model", default=None, type=str, help="file name for the model"
 )
 parser.add_argument(
@@ -82,24 +79,7 @@ vocab_size = len(dataloader.char2idx)
 modelName = 'model_0-Mpro2_Pred_8_AA_Reading_Frame_Q@R4-AUTOREG_transformer-both_rounded.keras'
 model = cleavenet.models.load_model(modelName=args.model, seqLen=seqLen)
 
-# Load Model: Prev
-if 2 == 3:
-	model, checkpoint_path = cleavenet.models.load_generator_model(
-		model_type='transformer', model_weights=args.model_weights, training_scheme='rounded'
-	)
-	
-	# Fake run to load data in model (have to do this for conditional models since run in eager mode)
-	conditioning_tag_fake = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
-	print(f'\nCond Tag: ({len(conditioning_tag_fake)}, {len(conditioning_tag_fake[0])})\n')
-	generated_seq = cleavenet.models.inference(model, dataloader, causal=True, seq_len=seqLen+1,
-			                                   penalty=1, # no penalty
-			                                   verbose=True,
-			                                   conditioning_tag=conditioning_tag_fake,
-			                                   temperature=1 # no temp
-			                                   )
-	model.summary()
-
-
+# 
 if args.z_scores is not None:
 	cond_z_scores = pd.read_csv(args.z_scores)
 	assert ([mmp in cond_z_scores.columns for mmp in mmps])
@@ -118,8 +98,7 @@ untokenized_seqs = []
 for i in range(len(conditioning_tag)):
 	for j in tqdm(range(args.num_seqs)):
 		while True:
-			model.built=True
-			#model.load_weights(checkpoint_path)  # Load model weights
+			#model.built=True
 
 			# Generate using loaded weights
 			generated_seq = cleavenet.models.inference(
@@ -134,7 +113,7 @@ for i in range(len(conditioning_tag)):
 				
 
 # Print seqs
-print('\nGenerated Substrates')
+print('\nGenerated Substrates:')
 for seq in untokenized_seqs:
 	print(f'  {seq}')
 
@@ -142,14 +121,16 @@ for seq in untokenized_seqs:
 if not os.path.exists(args.output_dir):
 	os.makedirs(args.output_dir)
 idx = 0
+tag = dataset.replace(" - ", " ").replace(" ", "_")
 while True:
-	save_file = os.path.join(args.output_dir, f'generatedSubs_{idx}-penalty_'+str(args.repeat_penalty)+'-temp_'+str(args.temperature)+'.csv')
+	save_file = os.path.join(args.output_dir, f'generatedSubs_{idx}-{tag}-penalty_'+str(args.repeat_penalty)+'-temp_'+str(args.temperature)+'.csv')
 	if not os.path.exists(save_file):
 		break
 	idx += 1
-print(f'\nSubstrates saved at: {save_file}')
+print(f'\nSequences saved at: {save_file}')
 with open(save_file, 'a') as f:
 	for seq in untokenized_seqs:
-		f.write(seq)
-		f.write('\n')
+		f.write(f'{seq}\n')
+	f.write('\nModel:\n')
+	f.write(f'{args.model}')
        
