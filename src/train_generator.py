@@ -5,6 +5,8 @@ import random
 import sys
 import time
 
+import keras
+
 import numpy as np
 import tensorflow as tf
 from tqdm import tqdm
@@ -66,7 +68,8 @@ else:
 
 # Evaluate data_path
 if ' - ' in args.data_path and ' AA' in args.data_path:
-    dataset = args.data_path.split(' - ')[0]
+    #dataset = args.data_path.split(' - ')[0]
+    dataset = args.data_path.replace('data/', '').replace('.csv', '')
     fname = args.data_path.split(' - ')
     for s in fname:
     	if ' AA' in s:
@@ -75,6 +78,7 @@ else:
     dataset = args.data_path.strip('.csv')
 # f'Training Dataset: {dataset}\n'
 print(f'\nTraining Model: {args.model_type}\n'
+      f'Dataset: {dataset}\n'
       f'Training Data: {data_path}\n'
       f'Sequence Length: {args.seq_len}\n'
       f'Training Scheme: {args.training_scheme}\n'
@@ -131,33 +135,42 @@ def main():
 		num_heads = 6
 		dropout = 0.25
 		if causal:
-		    if args.condition == 'conditional' or args.condition == 'randomize':
-		        model = cleavenet.models.ConditionalTransformerDecoder(
-		                            num_layers=num_layers,
-		                            d_model=args.d_model,
-		                            num_heads=num_heads,
-		                            dff=args.d_model, # dense params
-		                            vocab_size=vocab_size,
-		                            dropout_rate=dropout)
-		    elif args.condition == 'unconditional':
-		        model = cleavenet.models.TransformerDecoder(
-		                                num_layers=num_layers,
-		                                d_model=args.d_model,
-		                                num_heads=num_heads,
-		                                dff=args.d_model, # dense params
-		                                vocab_size=vocab_size,
-		                                dropout_rate=dropout)
-		    else:
-		        raise ValueError("Unknown model type")
+			print(f'Model params:\n'
+			  f'  num_layers: {num_layers}\n'
+			  f'     d_model: {args.d_model}\n'
+			  f'   num_heads: {num_heads}\n'
+			  f'         dff: {args.d_model}\n'
+			  f'  vocab_size: {vocab_size}\n'
+			  f'     dropout: {dropout}\n')
+
+			if args.condition == 'conditional' or args.condition == 'randomize':
+				model = cleavenet.models.ConditionalTransformerDecoder(
+						            num_layers=num_layers,
+						            d_model=args.d_model,
+						            num_heads=num_heads,
+						            dff=args.d_model, # dense params
+						            vocab_size=vocab_size,
+						            dropout_rate=dropout)
+			elif args.condition == 'unconditional':
+				model = cleavenet.models.TransformerDecoder(
+						                num_layers=num_layers,
+						                d_model=args.d_model,
+						                num_heads=num_heads,
+						                dff=args.d_model, # dense params
+						                vocab_size=vocab_size,
+						                dropout_rate=dropout)
+			else:
+				raise ValueError("Unknown model type")
+			print(f'Training Model:')
 		else:
-		    model = cleavenet.models.TransformerEncoder(
-		        num_layers=num_layers,
-		        d_model=args.d_model,
-		        num_heads=num_heads,
-		        dff=args.d_model,  # dense params
-		        vocab_size=vocab_size,
-		        dropout_rate=dropout,
-		        mask_zero=False)
+			model = cleavenet.models.TransformerEncoder(
+				num_layers=num_layers,
+				d_model=args.d_model,
+				num_heads=num_heads,
+				dff=args.d_model,  # dense params
+				vocab_size=vocab_size,
+				dropout_rate=dropout,
+				mask_zero=False)
 
 		lr = cleavenet.models.TransformerSchedule(args.d_model)
 
@@ -249,7 +262,9 @@ def main():
 			pathModelLoss = os.path.join(pathDir, f'model_{idx}_loss.txt')
 			break
 		idx += 1
-	print(f'\nSaving the best model weights at: {pathModelWeights}\n')
+	pathFullModel = os.path.join('models', dataset, f"model_1.h5")
+	#print(f'\nSaving the best model weights at: {pathModelWeights}\n')
+	print(f'\nSaving the trained model at: {pathFullModel}\n')
 
 	# Train generator
 	bestEpoch = ''
@@ -323,28 +338,31 @@ def main():
 				pathWeights = os.path.join(
 					save_dir, "{}_epoch_{}.weights.h5".format("model", epoch)
 				)
-				model.save_weights(pathWeights)
+				
+				# Save the full model (architecture + weights + optimizer state)
+				keras.saving.save_model(model, 'my_model.keras')
+				
+				#model.save_weights(pathWeights)
 				best_val_loss = val_loss
 				
 				# Save best weights in weights dir
-				model.save_weights(pathModelWeights)
+				#model.save_weights(pathModelWeights)
 				with open(pathModelLoss, 'w') as f:
 					f.write(f'Loss: {best_val_loss}\n')
 					for action in parser._actions: # Write job params
 						if action.dest != "help": # skip help action
 							value = getattr(args, action.dest)
 							f.write(f'{",".join(action.option_strings)}={value}\n')
-					
 
 	# Job summary
 	timeEnd = time.time()
-	timeTrain = timeEnd - timeStart
-	timeItr = round((args.num_epochs / timeTrain), 2)
-	timeTrain = round((timeTrain / 60), 2)
-	print(f'\nBest model weights saved at: {pathModelWeights}')
+	timeTrain = (timeEnd - timeStart) / 60 # convert to min
+	timeItr = args.num_epochs / timeTrain
+	#print(f'\nBest model weights saved at: {pathModelWeights}')
+	print(f'\nModel saved at: {pathFullModel}')
 	print(f'Summary: {pathModelLoss}')
 	print(f'Loss: {float(best_val_loss)}')
-	print(f'Training Time: {timeTrain:,}min, {timeItr}epoch/s\n')
+	print(f'Training Time: {timeTrain:.2f}min, {timeItr:.2f}epoch/min\n')
 	save_file = save_dir + '/best_loss.csv'
 	with open(save_file, 'w') as f:
 		f.write(str(best_val_loss) + '\n')

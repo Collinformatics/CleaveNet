@@ -126,8 +126,9 @@ class DataLoader(object):
 
 	def load_zscore_data(self):
 		"""
-		Load z-scored protease-substrate data from path
+		Load z-scored protease-substrate data from pathfv
 		"""
+		print(f'Loading csv: {self.data_path}\n')
 		df_z = pd.read_csv(self.data_path, header=0)
 		df_z = df_z.dropna(how='all', axis=1)	
 		if self.dataset == 'kukreja' or self.dataset == 'kukreja_rounded':

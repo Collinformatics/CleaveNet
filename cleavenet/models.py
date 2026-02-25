@@ -44,44 +44,45 @@ def positional_encoding(length, depth):
 
 
 class PositionalEmbedding(tf.keras.layers.Layer):
-    """
-    Looks up a tokens embedding vector, and adds a positional encoding vector
+	"""
+	Looks up a tokens embedding vector, and adds a positional encoding vector
 
-    label=True when input has a conditional tag (z-scores)
-    """
-    def __init__(self, vocab_size, d_model, max_seq_length=15, mask_zero=True, label=False, start_idx=20):
-        super().__init__()
-        self.d_model = d_model
-        self.embedding = tf.keras.layers.Embedding(vocab_size, d_model, mask_zero=mask_zero)
-        self.pos_encoding = positional_encoding(length=max_seq_length, depth=d_model)
-        self.label = label
-        self.start_idx = start_idx
-        if label: 
-            self.label_embedding = tf.keras.layers.Dense(d_model)
+	label=True when input has a conditional tag (z-scores)
+	"""
+	def __init__(self, vocab_size, d_model, max_seq_length=15, mask_zero=True, label=False, start_idx=20):
+		super().__init__()
+		self.d_model = d_model
+		self.embedding = tf.keras.layers.Embedding(vocab_size, d_model, mask_zero=mask_zero)
+		self.pos_encoding = positional_encoding(length=max_seq_length, depth=d_model)
+		self.label = label
+		self.start_idx = start_idx
+		if label: 
+			self.label_embedding = tf.keras.layers.Dense(d_model)
 
-    def call(self, x):
-        if self.label:
-            x, label = x 
-            label_emb = []
-            #print("label", label)
-            for i in range(len(label)):
-                if label[i][0] == self.start_idx: # if start token 
-                    label_emb_temp = self.embedding(label[i])
-                else:
-                    label_emb_temp = self.label_embedding(tf.expand_dims(label[i], 0))
-                #print("embedded", label_emb_temp)
-                label_emb.append(label_emb_temp)
-            label_emb = tf.stack(label_emb)
-        x = self.embedding(x)
-        if self.label:
-            if x.shape[1] == 0:
-                x = label_emb
-            else:
-                x = tf.concat([label_emb, x], 1)
-        length = tf.shape(x)[1]
-        x *= tf.math.sqrt(tf.cast(self.d_model, tf.float32))
-        x = x + self.pos_encoding[tf.newaxis, :length, :]
-        return x
+	def call(self, x):
+		if self.label:
+			#print(f'X:\n{x}\n')
+			x, label = x 
+			label_emb = []
+			#print("label", label)
+			for i in range(len(label)):
+				if label[i][0] == self.start_idx: # if start token 
+					label_emb_temp = self.embedding(label[i])
+				else:
+					label_emb_temp = self.label_embedding(tf.expand_dims(label[i], 0))
+				#print("embedded", label_emb_temp)
+				label_emb.append(label_emb_temp)
+			label_emb = tf.stack(label_emb)
+		x = self.embedding(x)
+		if self.label:
+			if x.shape[1] == 0:
+				x = label_emb
+			else:
+				x = tf.concat([label_emb, x], 1)
+		length = tf.shape(x)[1]
+		x *= tf.math.sqrt(tf.cast(self.d_model, tf.float32))
+		x = x + self.pos_encoding[tf.newaxis, :length, :]
+		return x
 
 
 ### Transformer Components ###
@@ -272,45 +273,60 @@ class TransformerDecoder(tf.keras.Model):
 
 
 class ConditionalTransformerDecoder(tf.keras.Model):
-    "Transformer; Decoder-only model for autoregressive modeling"
-    def __init__(self, *, num_layers, d_model, num_heads, dff, vocab_size, dropout_rate=0.1):
-        super().__init__()
-        self.d_model = d_model
-        self.num_layers = num_layers
-        self.pos_embedding = PositionalEmbedding(vocab_size=vocab_size, d_model=d_model, label=True)
-        self.dropout = tf.keras.layers.Dropout(dropout_rate)
-        self.dec_layers = [
-            DecoderLayer(d_model=d_model, num_heads=num_heads, dff=dff, dropout_rate=dropout_rate)
-            for _ in range(num_layers)]
-        self.last_attn_scores = None
-        self.vocab_size=vocab_size
-        self.final_layer = tf.keras.layers.Dense(vocab_size)
+	"Transformer; Decoder-only model for autoregressive modeling"
+	def __init__(self, *, num_layers, d_model, num_heads, dff, vocab_size, dropout_rate=0.1):
+		super().__init__()
+		self.dff = dff
+		self.d_model = d_model
+		self.num_layers = num_layers
+		self.num_heads = num_heads
+		self.pos_embedding = PositionalEmbedding(vocab_size=vocab_size, d_model=d_model, label=True)
+		self.dropout = tf.keras.layers.Dropout(dropout_rate)
+		self.dec_layers = [
+		    DecoderLayer(d_model=d_model, num_heads=num_heads, dff=dff, dropout_rate=dropout_rate)
+		    for _ in range(num_layers)]
+		self.last_attn_scores = None
+		self.vocab_size=vocab_size
+		self.final_layer = tf.keras.layers.Dense(vocab_size, name="final_layer")
+		#self.final_layer = tf.keras.layers.Dense(vocab_size, name="dense")
 
-    # def build(self, input_shape): # Don't use with new TF
-    #     self.pos_embedding.build(input_shape)
-    #     input_shape = self.pos_embedding.compute_output_shape(input_shape)
-    #     self.dec_layers.build(input_shape)
-    #     input_shape = self.dec_layers.compute_output_shape(input_shape)
-    #     self.final_layer.build(input_shape)
-    #     self.built = True
+	# def build(self, input_shape): # Don't use with new TF
+	#     self.pos_embedding.build(input_shape)
+	#     input_shape = self.pos_embedding.compute_output_shape(input_shape)
+	#     self.dec_layers.build(input_shape)
+	#     input_shape = self.dec_layers.compute_output_shape(input_shape)
+	#     self.final_layer.build(input_shape)
+	#     self.built = True
 
-    def call(self, x):
-        x = self.pos_embedding(x)  # (batch_size, target_seq_len, d_model)
-        x = self.dropout(x)
-        for i in range(self.num_layers):
-          x  = self.dec_layers[i](x)
-        self.last_attn_scores = self.dec_layers[-1].last_attn_scores
-        logits = self.final_layer(x)  # (batch_size, target_len, target_vocab_size)
-        return logits
+	def call(self, x):
+		x = self.pos_embedding(x)  # (batch_size, target_seq_len, d_model)
+		x = self.dropout(x)
+		for i in range(self.num_layers):
+		  x  = self.dec_layers[i](x)
+		self.last_attn_scores = self.dec_layers[-1].last_attn_scores
+		logits = self.final_layer(x)  # (batch_size, target_len, target_vocab_size)
+		return logits
 
-    def compute_loss(self, y, y_hat):
-        loss = tf.keras.losses.sparse_categorical_crossentropy(y, y_hat, from_logits=True)
-        return tf.reduce_mean(loss)
+	def compute_loss(self, y, y_hat):
+		loss = tf.keras.losses.sparse_categorical_crossentropy(y, y_hat, from_logits=True)
+		return tf.reduce_mean(loss)
 
-    def compute_accuracy(self, y, y_hat):
-        m = tf.keras.metrics.SparseCategoricalAccuracy()
-        m.update_state(y, y_hat)
-        return m.result()
+	def compute_accuracy(self, y, y_hat):
+		m = tf.keras.metrics.SparseCategoricalAccuracy()
+		m.update_state(y, y_hat)
+		return m.result()
+
+	def get_config(self):
+		config = super().get_config()
+		config.update({
+			"num_layers": self.num_layers,
+			"d_model": self.d_model,
+			"num_heads": self.num_heads,
+			"dff": self.dff,
+			"vocab_size": self.vocab_size,
+			"dropout_rate": self.dropout.rate,
+		})
+		return config
         
 
 class TransformerEncoder(tf.keras.Model):
@@ -572,7 +588,8 @@ def load_generator_model(model_type, model_weights, training_scheme='uncondition
 		vocab_size = 22
 		num_layers = 2
 		num_heads = 6
-		dropout = 0
+		#dropout = 0
+		dropout = 0.25
 		d_model = 64
 		if training_scheme == 'unconditional':
 		    checkpoint_path = os.path.join(parent_dir+"weights/AUTOREG_transformer/unconditional/", model_weights)
@@ -586,6 +603,13 @@ def load_generator_model(model_type, model_weights, training_scheme='uncondition
 		    num_layers=3
 		    d_model = 64
 		    checkpoint_path = os.path.join("weights/AUTOREG_transformer/both_rounded/", model_weights) # rounded to tenth
+		print(f'Model params:\n'
+			  f'  num_layers: {num_layers}\n'
+			  f'     d_model: {d_model}\n'
+			  f'   num_heads: {num_heads}\n'
+			  f'         dff: {d_model}\n'
+			  f'  vocab_size: {vocab_size}\n'
+			  f'     dropout: {dropout}\n')
 		if training_scheme == 'unconditional':
 		    model = TransformerDecoder(
 		        num_layers=num_layers,
@@ -595,13 +619,14 @@ def load_generator_model(model_type, model_weights, training_scheme='uncondition
 		        vocab_size=vocab_size,
 		        dropout_rate=dropout)
 		else:
-		    model = cleavenet.models.ConditionalTransformerDecoder(
-		                        num_layers=num_layers,
-		                        d_model=d_model,
-		                        num_heads=num_heads,
-		                        dff=d_model, # dense params
-		                        vocab_size=vocab_size,
-		                        dropout_rate=dropout)
+			model = cleavenet.models.ConditionalTransformerDecoder(
+						        num_layers=num_layers,
+						        d_model=d_model,
+						        num_heads=num_heads,
+						        dff=d_model, # dense params
+						        vocab_size=vocab_size,
+						        dropout_rate=dropout
+						        )
 	elif model_type == 'lstm':
 		regu = 0.01
 		d_model = 64
@@ -621,6 +646,7 @@ def load_generator_model(model_type, model_weights, training_scheme='uncondition
 	if training_scheme == 'unconditional':
 		model.summary()
 		model.load_weights(checkpoint_path)
+	
 	return model, checkpoint_path
 
 def load_predictor_model(model_type, checkpoint_path, batch_size, mask_zero=False):
@@ -667,13 +693,16 @@ def load_predictor_model(model_type, checkpoint_path, batch_size, mask_zero=Fals
 
 
 def inference(model, dataloader, causal=False, seq_len=10, penalty=1, verbose=False, conditioning_tag=None, temperature=1):
+    print(f'Seq Len: {seq_len}')
     if causal: # autoregressive inference
         if conditioning_tag is None:
             start_seq = np.array([dataloader.char2idx[dataloader.START]], dtype=np.int32)  # start from START token
             generated_seq = tf.expand_dims(start_seq, 0)
+            #print(f'Shapes:\n  Start Seq: {start_seq.shape}\n    Gen Seq: {generated_seq.shape}\n')
         else: 
             tag = np.array(conditioning_tag) # start from Z-scores
             generated_seq = (np.array([[]]), tag) # seq, tags
+            print(f'Shapes:\n  Gen Seq: {generated_seq}\n')
         reach_stop = False
         for i in range(seq_len):
             if reach_stop == False:
