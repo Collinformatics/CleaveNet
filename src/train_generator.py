@@ -299,7 +299,7 @@ def main():
 			pbar.clear() 
 			print(2 * '\033[F\033[K', end='')
 			model.summary()
-			print()
+			print('\n')
 		else: # run validation every epoch
 			vbar = tqdm(range(len(dataloader.X_test) // args.batch_size))
 			val_loss = []
@@ -335,21 +335,20 @@ def main():
 				tf.summary.scalar('loss', val_loss, step=epoch)
 				tf.summary.scalar('accuracy', val_acc, step=epoch)
 
-			#vbar.clear()
+			vbar.clear()
 			#print('\033[F\033[K', end='')
 			
-			# save model and weights only if validation loss decreases
+			# Save model and weights only if validation loss decreases
+			if epoch == 1:
+				print(f'  Best loss: {val_loss:.4f}')
+				print(f'  Valid acc: {val_acc:.4f}')
+			print('\033[F\033[K', end='') # Clear progress bar
 			if val_loss < best_val_loss:
-				saves += 1
-				if saves > 5:
-					saves = 0
-					print(15 * '\033[F\033[K', end='')
-					print(f'Epoch: {epoch}')
-				else:
-					print(2 * '\033[F\033[K', end='')
-				print(f'  Saving model with loss: {val_loss:.4f}')
-				print(f'  Val acc: {val_acc:.4f}')
-				#sys.exit()
+				print(5 * '\033[F\033[K', end='') # Delete previous output
+				#print(f'  Saving model with loss: {val_loss:.4f}')
+				print(f'Epoch: {epoch}')
+				print(f'  Best loss: {val_loss:.4f}')
+				print(f'  Valid acc: {val_acc:.4f}')
 				
 				# Save the model
 				model.save(pathFullModel)
@@ -364,9 +363,7 @@ def main():
 						if action.dest != "help": # skip help action
 							value = getattr(args, action.dest)
 							f.write(f'{",".join(action.option_strings)}={value}\n')
-			else:
-				print(3 * '\033[F\033[K', end='')
-				#sys.exit()
+
 
 	# Job summary
 	timeEnd = time.time()
