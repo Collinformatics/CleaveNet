@@ -26,7 +26,7 @@ parser.add_argument(
 	"--condition", default="randomize", type=str, help="`unconditional` for unconditional generation, `conditional` for conditional training with z-scores only, `randomize`, enables training of both schemes at 50%"
 )
 parser.add_argument(
-	"--data_path", default="kukreja.csv", type=str, help="file path for the training data"
+	"--data-path", default="kukreja.csv", type=str, help="file path for the training data"
 )
 parser.add_argument(
 	"--learning-rate", default=0.001, type=float, help="learning rate for LSTM"
@@ -113,7 +113,7 @@ def main():
 	print("vocab size",  vocab_size)
 	print(f'Training samples: {len(dataloader.X_train)}')
 	print(f'Test samples: {len(dataloader.X_test)}\n')
-	
+
 	if args.condition == 'conditional' or args.condition == 'randomize':
 		conditioning_tag=dataloader.y_train
 		conditioning_tag_test=dataloader.y_test
@@ -136,20 +136,20 @@ def main():
 		if causal:
 			if args.condition == 'conditional' or args.condition == 'randomize':
 				model = cleavenet.models.ConditionalTransformerDecoder(
-						            num_layers=num_layers,
-						            d_model=args.d_model,
-						            num_heads=num_heads,
-						            dff=args.d_model, # dense params
-						            vocab_size=vocab_size,
-						            dropout_rate=dropout)
+							        num_layers=num_layers,
+							        d_model=args.d_model,
+							        num_heads=num_heads,
+							        dff=args.d_model, # dense params
+							        vocab_size=vocab_size,
+							        dropout_rate=dropout)
 			elif args.condition == 'unconditional':
 				model = cleavenet.models.TransformerDecoder(
-						                num_layers=num_layers,
-						                d_model=args.d_model,
-						                num_heads=num_heads,
-						                dff=args.d_model, # dense params
-						                vocab_size=vocab_size,
-						                dropout_rate=dropout)
+							            num_layers=num_layers,
+							            d_model=args.d_model,
+							            num_heads=num_heads,
+							            dff=args.d_model, # dense params
+							            vocab_size=vocab_size,
+							            dropout_rate=dropout)
 			else:
 				raise ValueError("Unknown model type")
 		else:
@@ -167,22 +167,21 @@ def main():
 	elif args.model_type == 'lstm':
 		regu = 0.01
 		if causal:
-		    num_layers = 3
-		    args.batch_size = 128
-		    dropout = 0.2
-		    embedding_dim = 64
-		    #args.d_model = 32
-		    model = cleavenet.models.AutoregressiveRNN(args.batch_size, vocab_size, embedding_dim, args.d_model, dropout,
-		                                  regu, args.seq_len, training=True, mask_zero=False, num_layers=num_layers)
+			num_layers = 3
+			args.batch_size = 128
+			dropout = 0.2
+			embedding_dim = 64
+			#args.d_model = 32
+			model = cleavenet.models.AutoregressiveRNN(args.batch_size, vocab_size, embedding_dim, args.d_model, dropout,
+			                              regu, args.seq_len, training=True, mask_zero=False, num_layers=num_layers)
 		else:
-		    args.batch_size = 128
-		    dropout = 0.01
-		    embedding_dim = 64
-		    #args.d_model = 64
-		    num_layers = 3
-		    args.learning_rate = 0.001
-		    model = cleavenet.models.RNNGenerator(args.batch_size, vocab_size, embedding_dim, args.d_model, dropout,
-		                                  regu, args.seq_len, training=True, num_layers=num_layers)
+			args.batch_size = 128
+			dropout = 0.01
+			embedding_dim = 64
+			#args.d_model = 64
+			num_layers = 3
+			args.learning_rate = 0.001
+			model = cleavenet.models.RNNGenerator(args.batch_size, vocab_size, embedding_dim, args.d_model, dropout, regu, args.seq_len, training=True, num_layers=num_layers)
 		#model.build((args.batch_size, None))
 		model.summary()
 		lr = args.learning_rate
@@ -244,7 +243,7 @@ def main():
 		  f'     dropout: {dropout}\n')
 	
 	# Model path
-	#print(f'\nModel label: {model_label}\nCondition: {args.condition}\nScheme: {args.training_scheme}')
+	print(f'\nModel label: {model_label}\nCondition: {args.condition}\nScheme: {args.training_scheme}')
 	if args.condition == 'randomize':
 		cond = 'both'
 	else:
@@ -255,49 +254,53 @@ def main():
 	if not os.path.exists(pathDir):
 		os.makedirs(pathDir)
 	idx = 0
-	d = 'models'
-	tag = f'model_{idx}-{dataset.replace(" - ", " ").replace(" ", "_")}-{model_label[1:]}-{cond}'
+	dirModels = 'models'
+	if not os.path.exists(dirModels):
+		os.makedirs(dirModels)
 	while True:
-		pathFullModel = os.path.join(d, f'{tag}.keras')
-		pathModelWeights = os.path.join(d, f'{tag}.weights.h5')
-		if not os.path.exists(pathModelWeights):
-			pathModelLoss = os.path.join(pathDir, f'model_{idx}_loss.txt')
+		tag = f'model_{idx}-{dataset.replace(" - ", " ").replace(" ", "_")}-{model_label[1:]}-{cond}'
+		pathFullModel = os.path.join(dirModels, f'{tag}.keras')
+		if not os.path.exists(pathFullModel):
+			pathModelLoss = os.path.join(dirModels, f'{tag}_loss.txt')
 			break
 		idx += 1
-	
-	#print(f'\nSaving the best model weights at: {pathModelWeights}')
-	#print(f'Saving model weights at: {pathModelLoss}')
+
+	#print(f'Saving model params at: {pathModelLoss}')
 	print(f'\nSaving the trained model at: {pathFullModel}\n')
 	
 	# Train generator
 	bestEpoch = ''
+	saves = 0
 	timeStart = time.time()
 	for epoch in range(args.num_epochs):
-		print("epoch", epoch)
+		print(f'Epoch: {epoch}')
 		pbar = tqdm(range(int(len(dataloader.X_train) // args.batch_size)))
 		for iter in pbar:
-		    # Grab a batch and train
-		    if causal:
-		        x, y = cleavenet.data.get_autoreg_batch(dataloader.X_train, args.batch_size, dataloader, width=args.seq_len, conditioning_tag=conditioning_tag, rng=rng, randomize_tag=randomize_tag)
-		        loss, y_hat = train_step_autoreg(x, y)
-		        acc = model.compute_accuracy(y, y_hat)
-		    else:
-		        x, y, mask = cleavenet.data.get_masked_batch(dataloader.X_train, args.batch_size, rng, dataloader)
-		        n_tokens += mask.sum()
-		        loss, y_hat = train_step_mask(x, y, mask)
-		        acc = model.compute_masked_accuracy(y, y_hat, mask)
-		    if iter == 0 and epoch == 0:
-		        model.summary()
-		    running_loss = smooth(running_loss, loss.numpy())
+			# Grab a batch and train
+			if causal:
+			    x, y = cleavenet.data.get_autoreg_batch(dataloader.X_train, args.batch_size, dataloader, width=args.seq_len, conditioning_tag=conditioning_tag, rng=rng, randomize_tag=randomize_tag)
+			    loss, y_hat = train_step_autoreg(x, y)
+			    acc = model.compute_accuracy(y, y_hat)
+			else:
+			    x, y, mask = cleavenet.data.get_masked_batch(dataloader.X_train, args.batch_size, rng, dataloader)
+			    n_tokens += mask.sum()
+			    loss, y_hat = train_step_mask(x, y, mask)
+			    acc = model.compute_masked_accuracy(y, y_hat, mask)
 
-		    # saving
-		    with train_summary_writer.as_default():
-		        tf.summary.scalar('loss', loss, step=global_step)
-		        tf.summary.scalar('accuracy', acc, step=global_step)
+			running_loss = smooth(running_loss, loss.numpy())
 
-		    global_step += 1
+			# saving
+			with train_summary_writer.as_default():
+				tf.summary.scalar('loss', loss, step=global_step)
+				tf.summary.scalar('accuracy', acc, step=global_step)
 
-		if epoch > 0: # run validation every epoch
+			global_step += 1
+		if epoch == 0:
+			pbar.clear() 
+			print(2 * '\033[F\033[K', end='')
+			model.summary()
+			print()
+		else: # run validation every epoch
 			vbar = tqdm(range(len(dataloader.X_test) // args.batch_size))
 			val_loss = []
 			val_acc = []
@@ -332,10 +335,21 @@ def main():
 				tf.summary.scalar('loss', val_loss, step=epoch)
 				tf.summary.scalar('accuracy', val_acc, step=epoch)
 
+			#vbar.clear()
+			#print('\033[F\033[K', end='')
+			
 			# save model and weights only if validation loss decreases
-			if val_loss < best_val_loss: 
-				print(f"Saving model with loss: {val_loss:.4f}")
-				print(f"Val acc: {val_acc:.4f}")
+			if val_loss < best_val_loss:
+				saves += 1
+				if saves == 6:
+					saves = 0
+					print(15 * '\033[F\033[K', end='')
+					print(f'Epoch: {epoch}')
+				else:
+					print(2 * '\033[F\033[K', end='')
+				print(f'  Saving model with loss: {val_loss:.4f}')
+				print(f'  Val acc: {val_acc:.4f}')
+				#sys.exit()
 				
 				# Save the model
 				model.save(pathFullModel)
@@ -344,20 +358,20 @@ def main():
 				best_val_loss = val_loss
 				
 				# Save best weights in weights dir
-				#model.save_weights(pathModelWeights)
-				if 2 == 3:
-					with open(pathModelLoss, 'w') as f:
-						f.write(f'Loss: {best_val_loss}\n')
-						for action in parser._actions: # Write job params
-							if action.dest != "help": # skip help action
-								value = getattr(args, action.dest)
-								f.write(f'{",".join(action.option_strings)}={value}\n')
+				with open(pathModelLoss, 'w') as f:
+					f.write(f'Loss: {best_val_loss}\n')
+					for action in parser._actions: # Write job params
+						if action.dest != "help": # skip help action
+							value = getattr(args, action.dest)
+							f.write(f'{",".join(action.option_strings)}={value}\n')
+			else:
+				print(3 * '\033[F\033[K', end='')
+				#sys.exit()
 
 	# Job summary
 	timeEnd = time.time()
 	timeTrain = (timeEnd - timeStart) / 60 # convert to min
 	timeItr = args.num_epochs / timeTrain
-	#print(f'\nBest model weights saved at: {pathModelWeights}')
 	print(f'\nModel saved at: {pathFullModel}')
 	print(f'Summary: {pathModelLoss}')
 	print(f'Loss: {float(best_val_loss)}')

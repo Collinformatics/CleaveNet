@@ -13,7 +13,7 @@ from cleavenet.utils import mmps
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-	"--data_path", default="kukreja.csv", type=str, help="file path for the training data"
+	"--data-path", default="kukreja.csv", type=str, help="file path for the training data"
 )
 parser.add_argument(
 	"--model", default=None, type=str, help="file name for the model"
