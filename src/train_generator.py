@@ -5,10 +5,9 @@ import random
 import sys
 import time
 
-import keras
-
 import numpy as np
 import tensorflow as tf
+from tensorflow import keras
 from tqdm import tqdm
 
 import cleavenet
@@ -135,14 +134,6 @@ def main():
 		num_heads = 6
 		dropout = 0.25
 		if causal:
-			print(f'Model params:\n'
-			  f'  num_layers: {num_layers}\n'
-			  f'     d_model: {args.d_model}\n'
-			  f'   num_heads: {num_heads}\n'
-			  f'         dff: {args.d_model}\n'
-			  f'  vocab_size: {vocab_size}\n'
-			  f'     dropout: {dropout}\n')
-
 			if args.condition == 'conditional' or args.condition == 'randomize':
 				model = cleavenet.models.ConditionalTransformerDecoder(
 						            num_layers=num_layers,
@@ -244,6 +235,15 @@ def main():
 	val_log_dir = os.path.join('logs'+model_label, '{}_GEN_val'.format(current_time))
 	val_summary_writer = tf.summary.create_file_writer(val_log_dir)
 	
+	# Print model params	
+	print(f'Model params:\n'
+		  f'  num_layers: {num_layers}\n'
+		  f'     d_model: {args.d_model}\n'
+		  f'   num_heads: {num_heads}\n'
+		  f'         dff: {args.d_model}\n'
+		  f'  vocab_size: {vocab_size}\n'
+		  f'     dropout: {dropout}\n')
+	
 	# Model path
 	#print(f'\nModel label: {model_label}\nCondition: {args.condition}\nScheme: {args.training_scheme}')
 	if args.condition == 'randomize':
@@ -252,20 +252,24 @@ def main():
 		cond = args.condition
 	if args.condition != 'unconditional' and args.training_scheme != 'bert' and args.round:
 		cond += '_rounded'
-	pathDir = os.path.join('weights', model_label[1:], cond)
+	pathDir = os.path.join('weights', dataset, model_label[1:], cond)
 	if not os.path.exists(pathDir):
 		os.makedirs(pathDir)
 	idx = 0
+	d = 'models'
+	tag = f'model_{idx}-{dataset.replace(" - ", " ").replace(" ", "_")}-{model_label[1:]}-{cond}'
 	while True:
-		pathModelWeights = os.path.join(pathDir, f'model_{idx}.weights.h5')
+		pathFullModel = os.path.join(d, f'{tag}.keras')
+		pathModelWeights = os.path.join(d, f'{tag}.weights.h5')
 		if not os.path.exists(pathModelWeights):
 			pathModelLoss = os.path.join(pathDir, f'model_{idx}_loss.txt')
 			break
 		idx += 1
-	pathFullModel = os.path.join('models', dataset, f"model_1.h5")
-	#print(f'\nSaving the best model weights at: {pathModelWeights}\n')
+	
+	#print(f'\nSaving the best model weights at: {pathModelWeights}')
+	#print(f'Saving model weights at: {pathModelLoss}')
 	print(f'\nSaving the trained model at: {pathFullModel}\n')
-
+	
 	# Train generator
 	bestEpoch = ''
 	timeStart = time.time()
@@ -278,8 +282,6 @@ def main():
 		        x, y = cleavenet.data.get_autoreg_batch(dataloader.X_train, args.batch_size, dataloader, width=args.seq_len, conditioning_tag=conditioning_tag, rng=rng, randomize_tag=randomize_tag)
 		        loss, y_hat = train_step_autoreg(x, y)
 		        acc = model.compute_accuracy(y, y_hat)
-		        if iter == 0 and epoch == 0:
-		            model.summary()
 		    else:
 		        x, y, mask = cleavenet.data.get_masked_batch(dataloader.X_train, args.batch_size, rng, dataloader)
 		        n_tokens += mask.sum()
@@ -339,20 +341,21 @@ def main():
 					save_dir, "{}_epoch_{}.weights.h5".format("model", epoch)
 				)
 				
-				# Save the full model (architecture + weights + optimizer state)
-				keras.saving.save_model(model, 'my_model.keras')
+				# Save the model
+				keras.saving.save_model(model, pathFullModel)
 				
 				#model.save_weights(pathWeights)
 				best_val_loss = val_loss
 				
 				# Save best weights in weights dir
 				#model.save_weights(pathModelWeights)
-				with open(pathModelLoss, 'w') as f:
-					f.write(f'Loss: {best_val_loss}\n')
-					for action in parser._actions: # Write job params
-						if action.dest != "help": # skip help action
-							value = getattr(args, action.dest)
-							f.write(f'{",".join(action.option_strings)}={value}\n')
+				if 2 == 3:
+					with open(pathModelLoss, 'w') as f:
+						f.write(f'Loss: {best_val_loss}\n')
+						for action in parser._actions: # Write job params
+							if action.dest != "help": # skip help action
+								value = getattr(args, action.dest)
+								f.write(f'{",".join(action.option_strings)}={value}\n')
 
 	# Job summary
 	timeEnd = time.time()

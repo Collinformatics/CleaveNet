@@ -2,6 +2,7 @@ import os
 
 import numpy as np
 import tensorflow as tf
+from tensorflow import keras
 from tensorflow.keras.regularizers import L2
 
 import cleavenet.data
@@ -274,21 +275,30 @@ class TransformerDecoder(tf.keras.Model):
 
 class ConditionalTransformerDecoder(tf.keras.Model):
 	"Transformer; Decoder-only model for autoregressive modeling"
-	def __init__(self, *, num_layers, d_model, num_heads, dff, vocab_size, dropout_rate=0.1):
-		super().__init__()
+	def __init__(self, *, num_layers, d_model, num_heads, dff, vocab_size, dropout_rate=0.1, **kwargs):
+		super().__init__(**kwargs)  # <-- IMPORTANT
 		self.dff = dff
 		self.d_model = d_model
 		self.num_layers = num_layers
 		self.num_heads = num_heads
-		self.pos_embedding = PositionalEmbedding(vocab_size=vocab_size, d_model=d_model, label=True)
+		self.vocab_size = vocab_size
+		self.pos_embedding = PositionalEmbedding(
+		    vocab_size=vocab_size,
+		    d_model=d_model,
+		    label=True
+		)
 		self.dropout = tf.keras.layers.Dropout(dropout_rate)
 		self.dec_layers = [
-		    DecoderLayer(d_model=d_model, num_heads=num_heads, dff=dff, dropout_rate=dropout_rate)
-		    for _ in range(num_layers)]
+		    DecoderLayer(
+		        d_model=d_model,
+		        num_heads=num_heads,
+		        dff=dff,
+		        dropout_rate=dropout_rate
+		    )
+		    for _ in range(num_layers)
+		]
 		self.last_attn_scores = None
-		self.vocab_size=vocab_size
 		self.final_layer = tf.keras.layers.Dense(vocab_size, name="final_layer")
-		#self.final_layer = tf.keras.layers.Dense(vocab_size, name="dense")
 
 	# def build(self, input_shape): # Don't use with new TF
 	#     self.pos_embedding.build(input_shape)
@@ -327,7 +337,12 @@ class ConditionalTransformerDecoder(tf.keras.Model):
 			"dropout_rate": self.dropout.rate,
 		})
 		return config
+	
+	@classmethod
+	def from_config(cls, config):
+		return cls(**config)
         
+
 
 class TransformerEncoder(tf.keras.Model):
     "Transformer; Encoder-only model for BERT MLM"
@@ -578,6 +593,28 @@ class AutoregressiveRNN(tf.keras.Model):
         m.update_state(y, y_hat)
         return m.result()
 
+
+def load_model(modelName, seqLen, model_type=None, training_scheme='rounded'):
+	if not modelName.endswith('.keras'):
+		modelName += '.keras'
+	pathModel = os.path.join('models', modelName)
+	print(f'Loading Model: {pathModel}')
+	model = keras.models.load_model(
+		pathModel,
+		custom_objects={
+			"ConditionalTransformerDecoder": ConditionalTransformerDecoder,
+			"DecoderLayer": DecoderLayer,
+			"PositionalEmbedding": PositionalEmbedding,
+		}
+	)
+	# Match training seq_len
+	dummy_seq = tf.zeros((1, seqLen), dtype=tf.int32) # batch_size, seq_len
+	dummy_cond = tf.zeros((1, 18), dtype=tf.int32)    # conditioning vector
+	_ = model((dummy_seq, dummy_cond), training=False)
+	model.summary()
+	return model #$
+
+
 def load_generator_model(model_type, model_weights, training_scheme='unconditional', parent_dir=''):
 	if not model_weights.endswith('.weights.h5'):
 		 model_weights += '.weights.h5'
@@ -693,7 +730,7 @@ def load_predictor_model(model_type, checkpoint_path, batch_size, mask_zero=Fals
 
 
 def inference(model, dataloader, causal=False, seq_len=10, penalty=1, verbose=False, conditioning_tag=None, temperature=1):
-    print(f'Seq Len: {seq_len}')
+    #print(f'Seq Len: {seq_len}')
     if causal: # autoregressive inference
         if conditioning_tag is None:
             start_seq = np.array([dataloader.char2idx[dataloader.START]], dtype=np.int32)  # start from START token
@@ -702,7 +739,7 @@ def inference(model, dataloader, causal=False, seq_len=10, penalty=1, verbose=Fa
         else: 
             tag = np.array(conditioning_tag) # start from Z-scores
             generated_seq = (np.array([[]]), tag) # seq, tags
-            print(f'Shapes:\n  Gen Seq: {generated_seq}\n')
+            #print(f'Shapes:\n  Gen Seq: {generated_seq}\n')
         reach_stop = False
         for i in range(seq_len):
             if reach_stop == False:

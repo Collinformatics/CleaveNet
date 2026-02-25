@@ -76,20 +76,15 @@ start_id = dataloader.char2idx[dataloader.START]
 vocab_size = len(dataloader.char2idx)
 
 # Load model
-model, checkpoint_path = cleavenet.models.load_generator_model(
-	model_type='transformer', model_weights=args.model_weights, training_scheme='rounded'
-)
+modelName = 'model_0-Mpro2_Pred_8_AA_Reading_Frame_Q@R4-AUTOREG_transformer-both_rounded.keras'
+model = cleavenet.models.load_model(modelName=modelName, seqLen=seqLen)
+if 2 == 3:
+	model, checkpoint_path = cleavenet.models.load_generator_model(
+		model_type='transformer', model_weights=args.model_weights, training_scheme='rounded'
+	)
 
 if 2 == 3:
 	x = 3
-# Match training seq_len
-dummy_seq = tf.zeros((1, seqLen), dtype=tf.int32) # batch_size, seq_len
-dummy_cond = tf.zeros((1, 18), dtype=tf.int32)    # conditioning vector
-_ = model((dummy_seq, dummy_cond), training=False)
-model.summary()
-
-# Now weights can be loaded safely
-#model.load_weights(checkpoint_path)
 
 if 2 == 3:
 	x = 3
@@ -116,58 +111,14 @@ else:
 	conditioning_tag = [[start_id]] # unconditional generation
 
 
+# Generate sequenes
 tokenized_seqs = []
 untokenized_seqs = []
-
-
-print('\n')
-for layer in model.layers:
-	if layer.weights:
-		print(layer.name, "has", len(layer.weights), "weights")
-	else:
-		print(layer.name, "has NO weights!")
-print()
-#sys.exit()
-
-
-def print_dense_layers(layer, prefix=""):
-    try:
-        sublayers = layer.layers  # most layers have this
-    except AttributeError:
-        sublayers = []
-    for sub in sublayers:
-        print_dense_layers(sub, prefix + layer.name + "/")
-    if isinstance(layer, tf.keras.layers.Dense):
-        print(prefix + layer.name)
-
-# Start from top-level model
-print('Layers:')
-for layer in model.layers:
-    print_dense_layers(layer)
-
-
-import h5py
-
-with h5py.File(checkpoint_path, "r") as f:
-    print("\nTop-level groups in weights file:")
-    for k in f.keys():
-        print(' ', k)
-print()
-
-
 for i in range(len(conditioning_tag)):
 	for j in tqdm(range(args.num_seqs)):
 		model.built=True
-		with h5py.File(checkpoint_path, "r") as f:
-			dense_w = f["final_layer/dense/kernel:0"][:]
-			dense_b = f["final_layer/dense/bias:0"][:]
+		#model.load_weights(checkpoint_path)  # Load model weights
 
-			model.get_layer("dense").set_weights([dense_w, dense_b])
-		model.load_weights(checkpoint_path)  # Load model weights
-		#model.load_weights(checkpoint_path, by_name=True, skip_mismatch=False)
-		#print(1)
-		#sys.exit()
-		
 		# Generate using loaded weights
 		generated_seq = cleavenet.models.inference(
 			model, dataloader, causal=True, seq_len=seqLen+1, penalty=args.repeat_penalty,
@@ -176,11 +127,18 @@ for i in range(len(conditioning_tag)):
 		tokenized_seqs.append(generated_seq)
 		untokenized_seqs.append(''.join(dataloader.idx2char[generated_seq]))
 
-if not os.path.exists(args.output_dir):
-    os.makedirs(args.output_dir)
+# Print seqs
+print('\nGenerated Substrates')
+for seq in untokenized_seqs:
+	print(f'  {seq}')
+print()
 
+# Save sequences
+if not os.path.exists(args.output_dir):
+	os.makedirs(args.output_dir)
 save_file = os.path.join(args.output_dir, 'generated_samples_penalty_'+str(args.repeat_penalty)+'_temp_'+str(args.temperature)+'.csv')
 with open(save_file, 'a') as f:
-    for seq in untokenized_seqs:
-        f.write(seq)
-        f.write('\n')
+	for seq in untokenized_seqs:
+		f.write(seq)
+		f.write('\n')
+       
