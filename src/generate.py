@@ -53,7 +53,8 @@ else:
 # Evaluate data_path
 seqLen = None
 if ' - ' in args.data_path and ' AA' in args.data_path:
-    dataset = args.data_path.split(' - ')[0].replace('data/', '')
+    #dataset = args.data_path.split(' - ')[0].replace('data/', '')
+    dataset = args.data_path.replace('data/', '').replace('.csv', '')
     fname = args.data_path.split(' - ')
     for s in fname:
     	if ' AA' in s:
@@ -76,8 +77,7 @@ start_id = dataloader.char2idx[dataloader.START]
 vocab_size = len(dataloader.char2idx)
 
 # Load model
-modelName = 'model_0-Mpro2_Pred_8_AA_Reading_Frame_Q@R4-AUTOREG_transformer-both_rounded.keras'
-model = cleavenet.models.load_model(modelName=args.model, seqLen=seqLen)
+model = cleavenet.models.load_model(pathModel=args.model, seqLen=seqLen)
 
 # 
 if args.z_scores is not None:

@@ -152,7 +152,6 @@ def main():
 						                dropout_rate=dropout)
 			else:
 				raise ValueError("Unknown model type")
-			print(f'Training Model:')
 		else:
 			model = cleavenet.models.TransformerEncoder(
 				num_layers=num_layers,
@@ -335,14 +334,11 @@ def main():
 
 			# save model and weights only if validation loss decreases
 			if val_loss < best_val_loss: 
-				print(f"Saving with val loss: {val_loss:.4f}")
+				print(f"Saving model with loss: {val_loss:.4f}")
 				print(f"Val acc: {val_acc:.4f}")
-				pathWeights = os.path.join(
-					save_dir, "{}_epoch_{}.weights.h5".format("model", epoch)
-				)
 				
 				# Save the model
-				keras.saving.save_model(model, pathFullModel)
+				model.save(pathFullModel)
 				
 				#model.save_weights(pathWeights)
 				best_val_loss = val_loss

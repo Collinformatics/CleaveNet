@@ -594,10 +594,11 @@ class AutoregressiveRNN(tf.keras.Model):
         return m.result()
 
 
-def load_model(modelName, seqLen, model_type=None, training_scheme='rounded'): #$
-	if not modelName.endswith('.keras'):
-		modelName += '.keras'
-	pathModel = os.path.join('models', modelName)
+def load_model(pathModel, seqLen, model_type=None, training_scheme='rounded'): #$
+	if not pathModel.endswith('.keras'):
+		pathModel += '.keras'
+	if not pathModel.startswith('models/'):
+		pathModel = os.path.join('models', pathModel)
 	print(f'\nLoading Model: {pathModel}')
 	model = keras.models.load_model(
 		pathModel,
