@@ -341,7 +341,7 @@ def main():
 			# save model and weights only if validation loss decreases
 			if val_loss < best_val_loss:
 				saves += 1
-				if saves == 6:
+				if saves > 5:
 					saves = 0
 					print(15 * '\033[F\033[K', end='')
 					print(f'Epoch: {epoch}')
