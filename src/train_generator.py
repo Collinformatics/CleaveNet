@@ -335,20 +335,24 @@ def main():
 				tf.summary.scalar('loss', val_loss, step=epoch)
 				tf.summary.scalar('accuracy', val_acc, step=epoch)
 
-			vbar.clear()
+
+			#vbar.clear()
 			#print('\033[F\033[K', end='')
 			
 			# Save model and weights only if validation loss decreases
+			print(3 * '\033[F\033[K', end='') # Clear progress bar
 			if epoch == 1:
+				print(f'Epoch: {epoch}')
 				print(f'  Best loss: {val_loss:.4f}')
 				print(f'  Valid acc: {val_acc:.4f}')
-			print('\033[F\033[K', end='') # Clear progress bar
+				
 			if val_loss < best_val_loss:
-				print(5 * '\033[F\033[K', end='') # Delete previous output
+				print(3 * '\033[F\033[K', end='') # Delete previous output
 				#print(f'  Saving model with loss: {val_loss:.4f}')
 				print(f'Epoch: {epoch}')
 				print(f'  Best loss: {val_loss:.4f}')
 				print(f'  Valid acc: {val_acc:.4f}')
+				time.sleep(1)
 				
 				# Save the model
 				model.save(pathFullModel)
@@ -363,6 +367,7 @@ def main():
 						if action.dest != "help": # skip help action
 							value = getattr(args, action.dest)
 							f.write(f'{",".join(action.option_strings)}={value}\n')
+
 
 
 	# Job summary
