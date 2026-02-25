@@ -341,17 +341,15 @@ def main():
 			
 			# Save model and weights only if validation loss decreases
 			print(3 * '\033[F\033[K', end='') # Clear progress bar
-			if epoch == 1:
-				print(f'Epoch: {epoch}')
-				print(f'  Best loss: {val_loss:.4f}')
-				print(f'  Valid acc: {val_acc:.4f}')
-				
 			if val_loss < best_val_loss:
-				print(3 * '\033[F\033[K', end='') # Delete previous output
+				if epoch != 1:
+					print('\033[F\033[K', end='') # Delete previous output
 				#print(f'  Saving model with loss: {val_loss:.4f}')
-				print(f'Epoch: {epoch}')
-				print(f'  Best loss: {val_loss:.4f}')
-				print(f'  Valid acc: {val_acc:.4f}')
+				print(
+					f"\rEpoch {epoch} | Best Loss: {val_loss:.4f} | Validation Accuracy: {val_acc:.4f}\n",
+					end="",
+					flush=True
+				)
 				time.sleep(1)
 				
 				# Save the model
@@ -367,6 +365,7 @@ def main():
 						if action.dest != "help": # skip help action
 							value = getattr(args, action.dest)
 							f.write(f'{",".join(action.option_strings)}={value}\n')
+							
 
 
 
