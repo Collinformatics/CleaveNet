@@ -594,11 +594,11 @@ class AutoregressiveRNN(tf.keras.Model):
         return m.result()
 
 
-def load_model(modelName, seqLen, model_type=None, training_scheme='rounded'):
+def load_model(modelName, seqLen, model_type=None, training_scheme='rounded'): #$
 	if not modelName.endswith('.keras'):
 		modelName += '.keras'
 	pathModel = os.path.join('models', modelName)
-	print(f'Loading Model: {pathModel}')
+	print(f'\nLoading Model: {pathModel}')
 	model = keras.models.load_model(
 		pathModel,
 		custom_objects={
@@ -612,7 +612,7 @@ def load_model(modelName, seqLen, model_type=None, training_scheme='rounded'):
 	dummy_cond = tf.zeros((1, 18), dtype=tf.int32)    # conditioning vector
 	_ = model((dummy_seq, dummy_cond), training=False)
 	model.summary()
-	return model #$
+	return model
 
 
 def load_generator_model(model_type, model_weights, training_scheme='unconditional', parent_dir=''):
@@ -730,7 +730,6 @@ def load_predictor_model(model_type, checkpoint_path, batch_size, mask_zero=Fals
 
 
 def inference(model, dataloader, causal=False, seq_len=10, penalty=1, verbose=False, conditioning_tag=None, temperature=1):
-    #print(f'Seq Len: {seq_len}')
     if causal: # autoregressive inference
         if conditioning_tag is None:
             start_seq = np.array([dataloader.char2idx[dataloader.START]], dtype=np.int32)  # start from START token

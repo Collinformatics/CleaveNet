@@ -19,6 +19,9 @@ parser.add_argument(
 	"--model_weights", default="model_0", type=str, help="file name for the model weights"
 )
 parser.add_argument(
+	"--model", default=None, type=str, help="file name for the model"
+)
+parser.add_argument(
 	"--num-seqs", default=100, type=int, help="number of sequences to be generated"
 )
 parser.add_argument(
@@ -77,17 +80,14 @@ vocab_size = len(dataloader.char2idx)
 
 # Load model
 modelName = 'model_0-Mpro2_Pred_8_AA_Reading_Frame_Q@R4-AUTOREG_transformer-both_rounded.keras'
-model = cleavenet.models.load_model(modelName=modelName, seqLen=seqLen)
+model = cleavenet.models.load_model(modelName=args.model, seqLen=seqLen)
+
+# Load Model: Prev
 if 2 == 3:
 	model, checkpoint_path = cleavenet.models.load_generator_model(
 		model_type='transformer', model_weights=args.model_weights, training_scheme='rounded'
 	)
-
-if 2 == 3:
-	x = 3
-
-if 2 == 3:
-	x = 3
+	
 	# Fake run to load data in model (have to do this for conditional models since run in eager mode)
 	conditioning_tag_fake = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
 	print(f'\nCond Tag: ({len(conditioning_tag_fake)}, {len(conditioning_tag_fake[0])})\n')
@@ -98,6 +98,7 @@ if 2 == 3:
 			                                   temperature=1 # no temp
 			                                   )
 	model.summary()
+
 
 if args.z_scores is not None:
 	cond_z_scores = pd.read_csv(args.z_scores)
@@ -116,27 +117,37 @@ tokenized_seqs = []
 untokenized_seqs = []
 for i in range(len(conditioning_tag)):
 	for j in tqdm(range(args.num_seqs)):
-		model.built=True
-		#model.load_weights(checkpoint_path)  # Load model weights
+		while True:
+			model.built=True
+			#model.load_weights(checkpoint_path)  # Load model weights
 
-		# Generate using loaded weights
-		generated_seq = cleavenet.models.inference(
-			model, dataloader, causal=True, seq_len=seqLen+1, penalty=args.repeat_penalty,
-			verbose=False, conditioning_tag=[conditioning_tag[i]], temperature=args.temperature
-		)
-		tokenized_seqs.append(generated_seq)
-		untokenized_seqs.append(''.join(dataloader.idx2char[generated_seq]))
+			# Generate using loaded weights
+			generated_seq = cleavenet.models.inference(
+				model, dataloader, causal=True, seq_len=seqLen+1, penalty=args.repeat_penalty,
+				verbose=False, conditioning_tag=[conditioning_tag[i]], temperature=args.temperature
+			)
+			tokenized_seqs.append(generated_seq)
+			seq = ''.join(dataloader.idx2char[generated_seq])
+			if len(seq) == seqLen and '$' not in seq and '*' not in seq:
+				untokenized_seqs.append(seq)
+				break
+				
 
 # Print seqs
 print('\nGenerated Substrates')
 for seq in untokenized_seqs:
 	print(f'  {seq}')
-print()
 
 # Save sequences
 if not os.path.exists(args.output_dir):
 	os.makedirs(args.output_dir)
-save_file = os.path.join(args.output_dir, 'generated_samples_penalty_'+str(args.repeat_penalty)+'_temp_'+str(args.temperature)+'.csv')
+idx = 0
+while True:
+	save_file = os.path.join(args.output_dir, f'generatedSubs_{idx}-penalty_'+str(args.repeat_penalty)+'-temp_'+str(args.temperature)+'.csv')
+	if not os.path.exists(save_file):
+		break
+	idx += 1
+print(f'\nSubstrates saved at: {save_file}')
 with open(save_file, 'a') as f:
 	for seq in untokenized_seqs:
 		f.write(seq)
