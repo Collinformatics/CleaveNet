@@ -638,6 +638,7 @@ def load_model(pathModel, seqLen, model_type=None, training_scheme='rounded'): #
 	# Print model info
 	pathParams = pathModel.replace('.keras', '_loss.txt')
 	if os.path.exists(pathParams):
+		print('Model Params:')
 		with open(pathParams, 'r') as f:
 			print(f.read())
 		print()
