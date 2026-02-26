@@ -365,9 +365,6 @@ def main():
 						if action.dest != "help": # skip help action
 							value = getattr(args, action.dest)
 							f.write(f'{",".join(action.option_strings)}={value}\n')
-							
-
-
 
 	# Job summary
 	timeEnd = time.time()
