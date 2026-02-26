@@ -248,83 +248,21 @@ class Decoder(tf.keras.layers.Layer):
 
 ### Transformer Models ###
 class TransformerDecoder(tf.keras.Model):
-    "Transformer; Decoder-only model for autoregressive modeling"
-    def __init__(self, *, num_layers, d_model, num_heads, dff, vocab_size, dropout_rate=0.1):
-        super().__init__()
-        self.decoder = Decoder(num_layers=num_layers, d_model=d_model,
-                               num_heads=num_heads, dff=dff,
-                               vocab_size=vocab_size,
-                               dropout_rate=dropout_rate)
-        self.final_layer = tf.keras.layers.Dense(vocab_size)
-        self.vocab_size=vocab_size
-
-    def call(self, x):
-        x = self.decoder(x) # (batch_size, target_len, d_model)
-        logits = self.final_layer(x)  # (batch_size, target_len, target_vocab_size)
-        return logits
-
-    def compute_loss(self, y, y_hat):
-        loss = tf.keras.losses.sparse_categorical_crossentropy(y, y_hat, from_logits=True)
-        return tf.reduce_mean(loss)
-
-    def compute_accuracy(self, y, y_hat):
-        m = tf.keras.metrics.SparseCategoricalAccuracy()
-        m.update_state(y, y_hat)
-        return m.result()
-
-
-class ConditionalTransformerDecoder(tf.keras.Model):
 	"Transformer; Decoder-only model for autoregressive modeling"
-	def __init__(self, *, num_layers, d_model, num_heads, dff, vocab_size, dropout_rate=0.1, **kwargs):
-		super().__init__(**kwargs)  # <-- IMPORTANT
-		self.dff = dff
+	def __init__(self, *, num_layers, d_model, num_heads, dff, vocab_size, dropout_rate=0.1):
+		super().__init__()
 		self.d_model = d_model
+		self.dff = dff
 		self.num_layers = num_layers
 		self.num_heads = num_heads
 		self.vocab_size = vocab_size
-		self.pos_embedding = PositionalEmbedding(
-		    vocab_size=vocab_size,
-		    d_model=d_model,
-		    label=True
-		)
+		self.decoder = Decoder(num_layers=num_layers, d_model=d_model,
+		                       num_heads=num_heads, dff=dff,
+		                       vocab_size=vocab_size,
+		                       dropout_rate=dropout_rate)
 		self.dropout = tf.keras.layers.Dropout(dropout_rate)
-		self.dec_layers = [
-		    DecoderLayer(
-		        d_model=d_model,
-		        num_heads=num_heads,
-		        dff=dff,
-		        dropout_rate=dropout_rate
-		    )
-		    for _ in range(num_layers)
-		]
-		self.last_attn_scores = None
-		self.final_layer = tf.keras.layers.Dense(vocab_size, name="final_layer")
-
-	# def build(self, input_shape): # Don't use with new TF
-	#     self.pos_embedding.build(input_shape)
-	#     input_shape = self.pos_embedding.compute_output_shape(input_shape)
-	#     self.dec_layers.build(input_shape)
-	#     input_shape = self.dec_layers.compute_output_shape(input_shape)
-	#     self.final_layer.build(input_shape)
-	#     self.built = True
-
-	def call(self, x):
-		x = self.pos_embedding(x)  # (batch_size, target_seq_len, d_model)
-		x = self.dropout(x)
-		for i in range(self.num_layers):
-		  x  = self.dec_layers[i](x)
-		self.last_attn_scores = self.dec_layers[-1].last_attn_scores
-		logits = self.final_layer(x)  # (batch_size, target_len, target_vocab_size)
-		return logits
-
-	def compute_loss(self, y, y_hat):
-		loss = tf.keras.losses.sparse_categorical_crossentropy(y, y_hat, from_logits=True)
-		return tf.reduce_mean(loss)
-
-	def compute_accuracy(self, y, y_hat):
-		m = tf.keras.metrics.SparseCategoricalAccuracy()
-		m.update_state(y, y_hat)
-		return m.result()
+		self.final_layer = tf.keras.layers.Dense(vocab_size)
+		self.vocab_size=vocab_size
 
 	def get_config(self):
 		config = super().get_config()
@@ -338,82 +276,178 @@ class ConditionalTransformerDecoder(tf.keras.Model):
 		})
 		return config
 	
+	def call(self, x):
+		x = self.decoder(x) # (batch_size, target_len, d_model)
+		logits = self.final_layer(x)  # (batch_size, target_len, target_vocab_size)
+		return logits
+
+	def compute_loss(self, y, y_hat):
+		loss = tf.keras.losses.sparse_categorical_crossentropy(y, y_hat, from_logits=True)
+		return tf.reduce_mean(loss)
+
+	def compute_accuracy(self, y, y_hat):
+		m = tf.keras.metrics.SparseCategoricalAccuracy()
+		m.update_state(y, y_hat)
+		return m.result()
+
+
+class ConditionalTransformerDecoder(tf.keras.Model):
+	"Transformer; Decoder-only model for autoregressive modeling"
+	def __init__(self, *, num_layers, d_model, num_heads, dff, vocab_size, dropout_rate=0.1, **kwargs):
+		super().__init__(**kwargs) # <-- IMPORTANT
+		self.dff = dff
+		self.d_model = d_model
+		self.num_layers = num_layers
+		self.num_heads = num_heads
+		self.vocab_size = vocab_size
+		self.pos_embedding = PositionalEmbedding(
+		    vocab_size=vocab_size,
+		    d_model=d_model,
+		    label=True
+		)
+		self.dec_layers = [
+		    DecoderLayer(
+		        d_model=d_model,
+		        num_heads=num_heads,
+		        dff=dff,
+		        dropout_rate=dropout_rate
+		    )
+		    for _ in range(num_layers)
+		]
+		self.last_attn_scores = None
+		self.dropout = tf.keras.layers.Dropout(dropout_rate)
+		self.final_layer = tf.keras.layers.Dense(vocab_size) #, name="final_layer"
+	
+	def get_config(self):
+		config = super().get_config()
+		config.update({
+			"num_layers": self.num_layers,
+			"d_model": self.d_model,
+			"num_heads": self.num_heads,
+			"dff": self.dff,
+			"vocab_size": self.vocab_size,
+			"dropout_rate": self.dropout.rate,
+		})
+		return config	
+
+	# def build(self, input_shape): # Don't use with new TF
+	#     self.pos_embedding.build(input_shape)
+	#     input_shape = self.pos_embedding.compute_output_shape(input_shape)
+	#     self.dec_layers.build(input_shape)
+	#     input_shape = self.dec_layers.compute_output_shape(input_shape)
+	#     self.final_layer.build(input_shape)
+	#     self.built = True
+
+	def call(self, x, training=None):
+		x = self.pos_embedding(x)  # (batch_size, target_seq_len, d_model)
+		#x = self.dropout(x, training=training)
+		for i in range(self.num_layers):
+		  x  = self.dec_layers[i](x) # , training=training
+		self.last_attn_scores = self.dec_layers[-1].last_attn_scores
+		logits = self.final_layer(x)  # (batch_size, target_len, target_vocab_size)
+		return logits
+
+	def compute_loss(self, y, y_hat):
+		loss = tf.keras.losses.sparse_categorical_crossentropy(y, y_hat, from_logits=True)
+		return tf.reduce_mean(loss)
+
+	def compute_accuracy(self, y, y_hat):
+		m = tf.keras.metrics.SparseCategoricalAccuracy()
+		m.update_state(y, y_hat)
+		return m.result()
+
 	@classmethod
 	def from_config(cls, config):
 		return cls(**config)
-        
 
 
 class TransformerEncoder(tf.keras.Model):
-    "Transformer; Encoder-only model for BERT MLM"
-    def __init__(self, *, num_layers, d_model, num_heads, dff, vocab_size, dropout_rate=0.1, output_dim=None, pool_outputs=False, mask_zero=False):
-        super().__init__()
-        if output_dim == None:
-            output_dim=vocab_size
-        self.pool_outputs = pool_outputs
-        self.encoder = Encoder(num_layers=num_layers, d_model=d_model,
-                               num_heads=num_heads, dff=dff,
-                               vocab_size=vocab_size,
-                               dropout_rate=dropout_rate, mask_zero=mask_zero)
-        self.final_layer = tf.keras.layers.Dense(output_dim)
-        self.vocab_size = vocab_size
+	"Transformer; Encoder-only model for BERT MLM"
+	def __init__(self, *, num_layers, d_model, num_heads, dff, vocab_size, dropout_rate=0.1, output_dim=None, pool_outputs=False, mask_zero=False):
+		super().__init__()
+		if output_dim == None:
+			output_dim=vocab_size
+		self.d_model = d_model
+		self.dff = dff
+		self.num_layers = num_layers
+		self.vocab_size = vocab_size
+		self.pool_outputs = pool_outputs
+		self.encoder = Encoder(
+			num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff, 
+			vocab_size=vocab_size, dropout_rate=dropout_rate, mask_zero=mask_zero
+		)
+		self.dropout = tf.keras.layers.Dropout(dropout_rate)
+		self.final_layer = tf.keras.layers.Dense(output_dim)
 
-    def call(self, x):
-        x = self.encoder(x)  # (batch_size, target_len, d_model)
-        self.last_layer_embeddings = x
-        if self.pool_outputs:
-            x = tf.squeeze(x[:, 0:1, :], axis=1) # (batch_size, 1, output) , using for regression task (pool outputs by taking representation of first token)
-        logits = self.final_layer(x)  # (batch_size, target_len, target_vocab_size)
-        return logits
+	def get_config(self):
+		config = super().get_config()
+		config.update({
+			"num_layers": self.num_layers,
+			"d_model": self.d_model,
+			"num_heads": self.num_heads,
+			"dff": self.dff,
+			"vocab_size": self.vocab_size,
+			"dropout_rate": self.dropout.rate,
+		})
+		return config
+    
+	def call(self, x, training=None):
+		x = self.encoder(x, training=training)  # (batch_size, target_len, d_model)
+		x = self.dropout(x, training=training)
+		self.last_layer_embeddings = x
+		if self.pool_outputs:
+		    x = tf.squeeze(x[:, 0:1, :], axis=1) # (batch_size, 1, output) , using for regression task (pool outputs by taking representation of first token)
+		logits = self.final_layer(x)  # (batch_size, target_len, target_vocab_size)
+		return logits
 
-    def compute_masked_loss(self, y, y_hat, mask):
-        """ Computes loss between true y and prediction over masked locations"""
-        # Select masked locations
-        y_masked = tf.boolean_mask(y, mask)
-        y_hat_masked = tf.boolean_mask(y_hat, mask)
-        loss = tf.keras.losses.sparse_categorical_crossentropy(y_masked, y_hat_masked, from_logits=True)
-        return tf.reduce_mean(loss)
+	def compute_masked_loss(self, y, y_hat, mask):
+		""" Computes loss between true y and prediction over masked locations"""
+		# Select masked locations
+		y_masked = tf.boolean_mask(y, mask)
+		y_hat_masked = tf.boolean_mask(y_hat, mask)
+		loss = tf.keras.losses.sparse_categorical_crossentropy(y_masked, y_hat_masked, from_logits=True)
+		return tf.reduce_mean(loss)
 
-    def compute_masked_accuracy(self, y, y_hat, mask):
-        m = tf.keras.metrics.CategoricalAccuracy()
-        # Compute accuracy over masked tokens
-        y_onehot = tf.one_hot(y, depth=self.vocab_size)
-        y_masked = tf.boolean_mask(y_onehot, mask)
-        y_hat_masked = tf.boolean_mask(y_hat, mask)
+	def compute_masked_accuracy(self, y, y_hat, mask):
+		m = tf.keras.metrics.CategoricalAccuracy()
+		# Compute accuracy over masked tokens
+		y_onehot = tf.one_hot(y, depth=self.vocab_size)
+		y_masked = tf.boolean_mask(y_onehot, mask)
+		y_hat_masked = tf.boolean_mask(y_hat, mask)
 
-        # Compute accuracy
-        m.update_state(y_masked, y_hat_masked)
-        accuracy = m.result()
-        return accuracy
+		# Compute accuracy
+		m.update_state(y_masked, y_hat_masked)
+		accuracy = m.result()
+		return accuracy
 
-    def compute_loss(self, y, y_hat):
-        """ Computes loss, as mean absolute error, between true y and prediction.
+	def compute_loss(self, y, y_hat):
+		""" Computes loss, as mean absolute error, between true y and prediction.
 
-        Args:
-            y: true labels
-            y_hat: output prediction
+		Args:
+		    y: true labels
+		    y_hat: output prediction
 
-        Returns:
-            absolute error
-        """
-        y_hat = y_hat # batch, last, 1
-        y_hat = tf.cast(y_hat, tf.float64)
-        error = tf.abs(y - y_hat)
-        return tf.reduce_mean(error)
+		Returns:
+		    absolute error
+		"""
+		y_hat = y_hat # batch, last, 1
+		y_hat = tf.cast(y_hat, tf.float64)
+		error = tf.abs(y - y_hat)
+		return tf.reduce_mean(error)
 
-    def compute_rmse(self, y, y_hat, axis=None):
-        """Computes the root mean squared error between true y and prediction.
+	def compute_rmse(self, y, y_hat, axis=None):
+		"""Computes the root mean squared error between true y and prediction.
 
-        Args:
-            y: true labels
-            y_hat: output prediction
+		Args:
+		    y: true labels
+		    y_hat: output prediction
 
-        Returns:
-            mse
-        """
-        y_hat = y_hat
-        error = (y - y_hat) ** 2
-        return tf.sqrt(tf.reduce_mean(error, axis=axis))
+		Returns:
+		    mse
+		"""
+		y_hat = y_hat
+		error = (y - y_hat) ** 2
+		return tf.sqrt(tf.reduce_mean(error, axis=axis))
 
 
 ### LSTM PREDICTOR ###
@@ -599,7 +633,15 @@ def load_model(pathModel, seqLen, model_type=None, training_scheme='rounded'): #
 		pathModel += '.keras'
 	if not pathModel.startswith('models/'):
 		pathModel = os.path.join('models', pathModel)
-	print(f'\nLoading Model: {pathModel}')
+	print(f'\nLoading Model: {pathModel}')	
+	
+	# Print model info
+	pathParams = pathModel.replace('.keras', '_loss.txt')
+	if os.path.exists(pathParams):
+		with open(pathParams, 'r') as f:
+			print(f.read())
+		print()
+	
 	model = keras.models.load_model(
 		pathModel,
 		custom_objects={

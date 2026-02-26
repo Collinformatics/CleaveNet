@@ -107,7 +107,6 @@ def main():
 		raise ValueError("Unknown training scheme")
 
 	# Get vocabulary size and num samples
-	print(dataloader.char2idx)
 	vocab_size = len(dataloader.char2idx)
 	print("vocab length",  len(dataloader.char2idx))
 	print("vocab size",  vocab_size)
@@ -172,8 +171,10 @@ def main():
 			dropout = 0.2
 			embedding_dim = 64
 			#args.d_model = 32
-			model = cleavenet.models.AutoregressiveRNN(args.batch_size, vocab_size, embedding_dim, args.d_model, dropout,
-			                              regu, args.seq_len, training=True, mask_zero=False, num_layers=num_layers)
+			model = cleavenet.models.AutoregressiveRNN(
+				args.batch_size, vocab_size, embedding_dim, args.d_model, dropout, 
+				regu, args.seq_len, training=True, mask_zero=False, num_layers=num_layers
+			)
 		else:
 			args.batch_size = 128
 			dropout = 0.01
@@ -181,7 +182,10 @@ def main():
 			#args.d_model = 64
 			num_layers = 3
 			args.learning_rate = 0.001
-			model = cleavenet.models.RNNGenerator(args.batch_size, vocab_size, embedding_dim, args.d_model, dropout, regu, args.seq_len, training=True, num_layers=num_layers)
+			model = cleavenet.models.RNNGenerator(
+				args.batch_size, vocab_size, embedding_dim, args.d_model, dropout,  
+				regu, args.seq_len, training=True, num_layers=num_layers
+			)
 		#model.build((args.batch_size, None))
 		model.summary()
 		lr = args.learning_rate
@@ -233,17 +237,19 @@ def main():
 	val_log_dir = os.path.join('logs'+model_label, '{}_GEN_val'.format(current_time))
 	val_summary_writer = tf.summary.create_file_writer(val_log_dir)
 	
-	# Print model params	
-	print(f'Model params:\n'
+	# Print model params
+	print(f'\nModel params:\n'
 		  f'  num_layers: {num_layers}\n'
 		  f'     d_model: {args.d_model}\n'
 		  f'   num_heads: {num_heads}\n'
 		  f'         dff: {args.d_model}\n'
 		  f'  vocab_size: {vocab_size}\n'
 		  f'     dropout: {dropout}\n')
+	print(f'\nModel Label: {model_label.replace("/", "")}\n'
+		  f'Condition: {args.condition}\n'
+		  f'Scheme: {args.training_scheme}\n')
 	
 	# Model path
-	print(f'\nModel label: {model_label}\nCondition: {args.condition}\nScheme: {args.training_scheme}')
 	if args.condition == 'randomize':
 		cond = 'both'
 	else:
@@ -346,7 +352,7 @@ def main():
 					print('\033[F\033[K', end='') # Delete previous output
 				#print(f'  Saving model with loss: {val_loss:.4f}')
 				print(
-					f"\rEpoch {epoch} | Best Loss: {val_loss:.4f} | Validation Accuracy: {val_acc:.4f}\n",
+					f"\rEpoch: {epoch} | Best Loss: {val_loss:.4f} | Validation Accuracy: {val_acc:.4f}\n",
 					end="",
 					flush=True
 				)
@@ -365,6 +371,7 @@ def main():
 						if action.dest != "help": # skip help action
 							value = getattr(args, action.dest)
 							f.write(f'{",".join(action.option_strings)}={value}\n')
+					f.write(f'Random Seed: {rng}')
 
 	# Job summary
 	timeEnd = time.time()
