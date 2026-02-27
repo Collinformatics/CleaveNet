@@ -272,7 +272,7 @@ def main():
 		idx += 1
 
 	#print(f'Saving model params at: {pathModelLoss}')
-	print(f'\nSaving the trained model at: {pathFullModel}\n')
+	print(f'\nSaving the trained model at:\n  {pathFullModel}\n')
 	
 	# Train generator
 	bestEpoch = ''
