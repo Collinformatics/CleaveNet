@@ -1,6 +1,7 @@
 import argparse
 import datetime
 import os
+import pandas as pd
 import random
 import sys
 import time
@@ -29,7 +30,7 @@ parser.add_argument(
 	"--data-path", default="kukreja.csv", type=str, help="file path for the training data"
 )
 parser.add_argument(
-	"--learning-rate", default=0.001, type=float, help="learning rate for LSTM"
+	"--learning-rate", default=0.0005, type=float, help="learning rate for LSTM"
 )
 parser.add_argument(
 	"--model-type", default="transformer", type=str, help="transformer or LSTM"
@@ -66,13 +67,12 @@ else:
 	data_path = os.path.join('data', args.data_path)
 
 # Evaluate data_path
-if ' - ' in args.data_path and ' AA' in args.data_path:
-    #dataset = args.data_path.split(' - ')[0]
+if '_' in args.data_path and 'AA' in args.data_path:
     dataset = args.data_path.replace('data/', '').replace('.csv', '')
-    fname = args.data_path.split(' - ')
-    for s in fname:
-    	if ' AA' in s:
-    		args.seq_len = int(s.strip(' AA'))
+    sfname = args.data_path.split('_')
+    for s in sfname:
+    	if 'AA' in s:
+    		args.seq_len = int(s.strip('AA'))
 else:
     dataset = args.data_path.strip('.csv')
 # f'Training Dataset: {dataset}\n'
@@ -132,13 +132,19 @@ def main():
 			num_layers = 2
 		num_heads = 6
 		dropout = 0.25
+		# ========================== Overwrite Trial ==========================
+		num_heads = 8
+		num_layers=4
+		dropout = 0.1
+		dff = args.d_model * 4
+		# =====================================================================
 		if causal:
 			if args.condition == 'conditional' or args.condition == 'randomize':
 				model = cleavenet.models.ConditionalTransformerDecoder(
 							        num_layers=num_layers,
 							        d_model=args.d_model,
 							        num_heads=num_heads,
-							        dff=args.d_model, # dense params
+							        dff=dff, # dense params
 							        vocab_size=vocab_size,
 							        dropout_rate=dropout)
 			elif args.condition == 'unconditional':
@@ -146,7 +152,7 @@ def main():
 							            num_layers=num_layers,
 							            d_model=args.d_model,
 							            num_heads=num_heads,
-							            dff=args.d_model, # dense params
+							            dff=dff, # dense params
 							            vocab_size=vocab_size,
 							            dropout_rate=dropout)
 			else:
@@ -242,7 +248,7 @@ def main():
 		  f'  num_layers: {num_layers}\n'
 		  f'     d_model: {args.d_model}\n'
 		  f'   num_heads: {num_heads}\n'
-		  f'         dff: {args.d_model}\n'
+		  f'         dff: {dff}\n'
 		  f'  vocab_size: {vocab_size}\n'
 		  f'     dropout: {dropout}\n')
 	print(f'\nModel Label: {model_label.replace("/", "")}\n'
@@ -275,6 +281,7 @@ def main():
 	print(f'\nSaving the trained model at:\n  {pathFullModel}\n')
 	
 	# Train generator
+	data = pd.DataFrame(0.0, index=[], columns=['loss', 'valid acc'])
 	bestEpoch = ''
 	saves = 0
 	timeStart = time.time()
@@ -344,6 +351,9 @@ def main():
 
 			#vbar.clear()
 			#print('\033[F\033[K', end='')
+			if epoch % 20 == 0:
+				data.loc[epoch, 'loss'] = val_loss
+				data.loc[epoch, 'valid acc'] = val_acc
 			
 			# Save model and weights only if validation loss decreases
 			print(3 * '\033[F\033[K', end='') # Clear progress bar
@@ -377,14 +387,16 @@ def main():
 	timeEnd = time.time()
 	timeTrain = (timeEnd - timeStart) / 60 # convert to min
 	timeItr = args.num_epochs / timeTrain
+	pathSave = pathFullModel.replace('.keras', '_trainingLog.csv')
 	print(f'\nModel saved at: {pathFullModel}')
 	print(f'Summary: {pathModelLoss}')
+	print(f'Training Log: {pathSave}')
 	print(f'Loss: {float(best_val_loss)}')
 	print(f'Training Time: {timeTrain:.2f}min, {timeItr:.2f}epoch/min\n')
 	save_file = save_dir + '/best_loss.csv'
 	with open(save_file, 'w') as f:
 		f.write(str(best_val_loss) + '\n')
-
+	data.to_csv(pathSave, index=True)
 
 
 

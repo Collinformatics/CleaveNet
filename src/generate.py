@@ -19,7 +19,7 @@ parser.add_argument(
 	"--model", default=None, type=str, help="file name for the model"
 )
 parser.add_argument(
-	"--num-seqs", default=10, type=int, help="number of sequences to be generated"
+	"--num-seqs", default=20, type=int, help="number of sequences to be generated"
 )
 parser.add_argument(
 	"--output-dir", default="generated", type=str, help="Directory to store outputs "

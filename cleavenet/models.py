@@ -676,6 +676,7 @@ def load_generator_model(model_type, model_weights, training_scheme='uncondition
 		    checkpoint_path = os.path.join(parent_dir+"weights/AUTOREG_transformer/unconditional/", model_weights)
 		elif training_scheme == 'conditional':
 		    num_layers=3
+		    
 		    checkpoint_path = os.path.join(parent_dir+"weights/AUTOREG_transformer/conditional/", model_weights)
 		elif training_scheme == 'both':
 		    num_layers=3
