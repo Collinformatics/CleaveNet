@@ -285,6 +285,7 @@ def main():
 	bestEpoch = ''
 	saves = 0
 	timeStart = time.time()
+	l = len(str(args.num_epochs))
 	for epoch in range(args.num_epochs):
 		print(f'Epoch: {epoch}')
 		pbar = tqdm(range(int(len(dataloader.X_train) // args.batch_size)))
@@ -349,25 +350,26 @@ def main():
 				tf.summary.scalar('accuracy', val_acc, step=epoch)
 
 
-			#vbar.clear()
-			#print('\033[F\033[K', end='')
+			#vbar.close()
 			if epoch % 20 == 0:
 				data.loc[epoch, 'loss'] = val_loss
 				data.loc[epoch, 'valid acc'] = val_acc
 			
 			# Save model and weights only if validation loss decreases
 			print(3 * '\033[F\033[K', end='') # Clear progress bar
-			if val_loss < best_val_loss:
-				if epoch != 1:
-					print('\033[F\033[K', end='') # Delete previous output
-				#print(f'  Saving model with loss: {val_loss:.4f}')
+			if epoch % 5 == 0:  #
+				timeEnd = time.time()
+				timeTrain = ((timeEnd - timeStart) / 60) / 60  # convert to hr
+				epochsRemain = args.num_epochs - epoch
+				timeRemain = epochsRemain / timeTrain
 				print(
-					f"\rEpoch: {epoch} | Best Loss: {val_loss:.4f} | Validation Accuracy: {val_acc:.4f}\n",
-					end="",
-					flush=True
+					f"Epoch: {epoch}{(l - len(str(epoch))) * ' '} | "
+					f"Best Loss: {best_val_loss:.4f} | "
+					f"Loss: {val_loss:.4f} | "
+					f"Validation Accuracy: {val_acc:.4f}\n"
+					f"Time Remaining: {timeRemain:.2f}"
 				)
-				time.sleep(1)
-				
+			if val_loss < best_val_loss:
 				# Save the model
 				model.save(pathFullModel)
 				
@@ -385,14 +387,14 @@ def main():
 
 	# Job summary
 	timeEnd = time.time()
-	timeTrain = (timeEnd - timeStart) / 60 # convert to min
+	timeTrain = ((timeEnd - timeStart) / 60) / 60 # convert to hr
 	timeItr = args.num_epochs / timeTrain
 	pathSave = pathFullModel.replace('.keras', '_trainingLog.csv')
 	print(f'\nModel saved at: {pathFullModel}')
 	print(f'Summary: {pathModelLoss}')
 	print(f'Training Log: {pathSave}')
 	print(f'Loss: {float(best_val_loss)}')
-	print(f'Training Time: {timeTrain:.2f}min, {timeItr:.2f}epoch/min\n')
+	print(f'Training Time: {timeTrain:.2f}hr, {timeItr:.2f}epoch/hr\n')
 	save_file = save_dir + '/best_loss.csv'
 	with open(save_file, 'w') as f:
 		f.write(str(best_val_loss) + '\n')
