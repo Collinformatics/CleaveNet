@@ -365,7 +365,7 @@ def main():
 					f"Best Loss: {best_val_loss:.4f} | "
 					f"Loss: {val_loss:.4f} | "
 					f"Validation Accuracy: {val_acc:.4f} | "
-					f"Runtime: {timeTrain}"
+					f"Runtime: {timeTrain:,.2f}hr"
 				)
 			if val_loss < best_val_loss:
 				# Save the model
