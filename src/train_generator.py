@@ -360,14 +360,12 @@ def main():
 			if epoch % 5 == 0:  #
 				timeEnd = time.time()
 				timeTrain = ((timeEnd - timeStart) / 60) / 60  # convert to hr
-				epochsRemain = args.num_epochs - epoch
-				timeRemain = epochsRemain / timeTrain
 				print(
 					f"Epoch: {epoch}{(l - len(str(epoch))) * ' '} | "
 					f"Best Loss: {best_val_loss:.4f} | "
 					f"Loss: {val_loss:.4f} | "
 					f"Validation Accuracy: {val_acc:.4f} | "
-					f"Time Remaining: {timeRemain:.2f}hr"
+					f"Runtime: {timeTrain}"
 				)
 			if val_loss < best_val_loss:
 				# Save the model
