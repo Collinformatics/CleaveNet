@@ -37,10 +37,6 @@ args = parser.parse_args()
 
 tf.config.list_physical_devices('GPU')
 
-
-import sys
-
-
 # Load in dataloader
 #data_dir = cleavenet.utils.get_data_dir()
 #data_path = os.path.join(data_dir, "kukreja.csv")
@@ -66,7 +62,6 @@ else:
 print(f'\nTraining Data: {data_path}\n'
       #f'      Dataset: {dataset}\n'
       f' Sequence Len: {seqLen}\n')
-sys.exit()
 
 dataloader = cleavenet.data.DataLoader(
 	data_path, seed=0, task='generator', model='autoreg', test_split=0.2, dataset=dataset
