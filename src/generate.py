@@ -52,12 +52,12 @@ else:
 
 # Evaluate data_path
 seqLen = None
-if ' - ' in args.data_path and ' AA' in args.data_path:
+if '_' in args.data_path and 'AA' in args.data_path:
     #dataset = args.data_path.split(' - ')[0].replace('data/', '')
     dataset = args.data_path.replace('data/', '').replace('.csv', '')
-    fname = args.data_path.split(' - ')
+    fname = args.data_path.split('_')
     for s in fname:
-    	if ' AA' in s:
+    	if 'AA' in s:
     		seqLen = int(s.strip(' AA'))
 else:
     dataset = args.data_path.strip('.csv')
@@ -66,7 +66,7 @@ else:
 print(f'\nTraining Data: {data_path}\n'
       #f'      Dataset: {dataset}\n'
       f' Sequence Len: {seqLen}\n')
-
+sys.exit()
 
 dataloader = cleavenet.data.DataLoader(
 	data_path, seed=0, task='generator', model='autoreg', test_split=0.2, dataset=dataset
@@ -127,7 +127,7 @@ while True:
 	if not os.path.exists(save_file):
 		break
 	idx += 1
-print(f'\nSequences saved at: {save_file}')
+print(f'\nSequences saved at: {save_file}\n')
 with open(save_file, 'a') as f:
 	for seq in untokenized_seqs:
 		f.write(f'{seq}\n')

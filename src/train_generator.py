@@ -135,7 +135,7 @@ def main():
 		# ========================== Overwrite Trial ==========================
 		num_heads = 8
 		num_layers=4
-		dropout = 0.1
+		dropout = 0.2
 		dff = args.d_model * 4
 		# =====================================================================
 		if causal:
@@ -246,6 +246,7 @@ def main():
 	# Print model params
 	print(f'\nModel params:\n'
 		  f'  num_layers: {num_layers}\n'
+		  f'learningrate: {args.learning_rate}\n'
 		  f'     d_model: {args.d_model}\n'
 		  f'   num_heads: {num_heads}\n'
 		  f'         dff: {dff}\n'
@@ -381,7 +382,8 @@ def main():
 						if action.dest != "help": # skip help action
 							value = getattr(args, action.dest)
 							f.write(f'{",".join(action.option_strings)}={value}\n')
-					f.write(f'Random Seed: {rng}')
+
+	print('End on epoch:', epoch)
 
 	# Job summary
 	timeEnd = time.time()
