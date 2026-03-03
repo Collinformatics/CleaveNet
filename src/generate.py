@@ -37,6 +37,7 @@ args = parser.parse_args()
 
 tf.config.list_physical_devices('GPU')
 
+
 # Load in dataloader
 #data_dir = cleavenet.utils.get_data_dir()
 #data_path = os.path.join(data_dir, "kukreja.csv")
@@ -73,6 +74,7 @@ vocab_size = len(dataloader.char2idx)
 
 # Load model
 model = cleavenet.models.load_model(pathModel=args.model, seqLen=seqLen)
+print()
 
 # 
 if args.z_scores is not None:
@@ -90,21 +92,48 @@ else:
 # Generate sequenes
 tokenized_seqs = []
 untokenized_seqs = []
-for i in range(len(conditioning_tag)):
-	for j in tqdm(range(args.num_seqs)):
-		while True:
-			#model.built=True
+if 'unconditional' in args.model:
+	for i in range(len(conditioning_tag)):
+		for j in tqdm(range(args.num_seqs)):
+			while True:
+				# Generate using loaded weights
+				generated_seq = cleavenet.models.inference(
+					model,
+					dataloader,
+					causal=True,
+					seq_len=seqLen + 1,
+					penalty=args.repeat_penalty,
+					verbose=False,
+					temperature=args.temperature
+				)
+				tokenized_seqs.append(generated_seq)
+				seq = ''.join(dataloader.idx2char[generated_seq])
+				seq = seq.replace('$','').replace('*','')
+				# print(f'Seq: {seq}')
+				if len(seq) == seqLen and '$' not in seq and '*' not in seq:
+					untokenized_seqs.append(seq)
+					break
 
-			# Generate using loaded weights
-			generated_seq = cleavenet.models.inference(
-				model, dataloader, causal=True, seq_len=seqLen+1, penalty=args.repeat_penalty,
-				verbose=False, conditioning_tag=[conditioning_tag[i]], temperature=args.temperature
-			)
-			tokenized_seqs.append(generated_seq)
-			seq = ''.join(dataloader.idx2char[generated_seq])
-			if len(seq) == seqLen and '$' not in seq and '*' not in seq:
-				untokenized_seqs.append(seq)
-				break
+else:
+	for i in range(len(conditioning_tag)):
+		for j in tqdm(range(args.num_seqs)):
+			while True:
+				# Generate using loaded weights
+				generated_seq = cleavenet.models.inference(
+					model,
+					dataloader,
+					causal=True,
+					seq_len=seqLen+1,
+					penalty=args.repeat_penalty,
+					verbose=False,
+					conditioning_tag=[conditioning_tag[i]],
+					temperature=args.temperature
+				)
+				tokenized_seqs.append(generated_seq)
+				seq = ''.join(dataloader.idx2char[generated_seq])
+				if len(seq) == seqLen and '$' not in seq and '*' not in seq:
+					untokenized_seqs.append(seq)
+					break
 				
 
 # Print seqs
@@ -122,7 +151,7 @@ while True:
 	if not os.path.exists(save_file):
 		break
 	idx += 1
-print(f'\nSequences saved at: {save_file}\n')
+print(f'\nSequences saved at:\n  {save_file}\n')
 with open(save_file, 'a') as f:
 	for seq in untokenized_seqs:
 		f.write(f'{seq}\n')

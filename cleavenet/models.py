@@ -249,8 +249,8 @@ class Decoder(tf.keras.layers.Layer):
 ### Transformer Models ###
 class TransformerDecoder(tf.keras.Model):
 	"Transformer; Decoder-only model for autoregressive modeling"
-	def __init__(self, *, num_layers, d_model, num_heads, dff, vocab_size, dropout_rate=0.1):
-		super().__init__()
+	def __init__(self, *, num_layers, d_model, num_heads, dff, vocab_size, dropout_rate=0.1,**kwargs):
+		super().__init__(**kwargs)
 		self.d_model = d_model
 		self.dff = dff
 		self.num_layers = num_layers
@@ -629,34 +629,39 @@ class AutoregressiveRNN(tf.keras.Model):
 
 
 def load_model(pathModel, seqLen, model_type=None, training_scheme='rounded'): #$
-	if not pathModel.endswith('.keras'):
-		pathModel += '.keras'
-	if not pathModel.startswith('models/'):
-		pathModel = os.path.join('models', pathModel)
-	print(f'\nLoading Model: {pathModel}')	
-	
-	# Print model info
-	pathParams = pathModel.replace('.keras', '_loss.txt')
-	if os.path.exists(pathParams):
-		print('Model Params:')
-		with open(pathParams, 'r') as f:
-			print(f.read())
-		print()
-	
-	model = keras.models.load_model(
-		pathModel,
-		custom_objects={
-			"ConditionalTransformerDecoder": ConditionalTransformerDecoder,
-			"DecoderLayer": DecoderLayer,
-			"PositionalEmbedding": PositionalEmbedding,
-		}
-	)
-	# Match training seq_len
-	dummy_seq = tf.zeros((1, seqLen), dtype=tf.int32) # batch_size, seq_len
-	dummy_cond = tf.zeros((1, 18), dtype=tf.int32)    # conditioning vector
-	_ = model((dummy_seq, dummy_cond), training=False)
-	model.summary()
-	return model
+    if not pathModel.endswith('.keras'):
+        pathModel += '.keras'
+    if not pathModel.startswith('models/'):
+        pathModel = os.path.join('models', pathModel)
+    print(f'\nLoading Model: {pathModel}')
+
+    # Print model info
+    pathParams = pathModel.replace('.keras', '_loss.txt')
+    if os.path.exists(pathParams):
+        print('Model Params:')
+        with open(pathParams, 'r') as f:
+            print(f.read())
+        print()
+
+    model = keras.models.load_model(
+        pathModel,
+        custom_objects={
+            "TransformerDecoder": TransformerDecoder,
+            "ConditionalTransformerDecoder": ConditionalTransformerDecoder,
+            "DecoderLayer": DecoderLayer,
+            "PositionalEmbedding": PositionalEmbedding,
+        }
+    )
+
+    if isinstance(model, ConditionalTransformerDecoder):
+        dummy_seq = tf.zeros((1, seqLen), dtype=tf.int32) # batch_size, seq_len
+        dummy_cond = tf.zeros((1, 18), dtype=tf.int32)    # conditioning vector
+        _ = model((dummy_seq, dummy_cond), training=False)
+    else:
+        dummy_seq = tf.zeros((1, seqLen), dtype=tf.int32)
+        _ = model(dummy_seq, training=False)
+    model.summary()
+    return model
 
 
 def load_generator_model(model_type, model_weights, training_scheme='unconditional', parent_dir=''):

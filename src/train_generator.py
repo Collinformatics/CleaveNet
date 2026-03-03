@@ -287,7 +287,7 @@ def main():
 	saves = 0
 	timeStart = time.time()
 	l = len(str(args.num_epochs))
-	for epoch in range(args.num_epochs):
+	for epoch in range(args.num_epochs + 1):
 		print(f'Epoch: {epoch}')
 		pbar = tqdm(range(int(len(dataloader.X_train) // args.batch_size)))
 		for iter in pbar:
@@ -352,7 +352,7 @@ def main():
 
 
 			#vbar.close()
-			if epoch % 20 == 0:
+			if epoch % 5 == 0:
 				data.loc[epoch, 'loss'] = val_loss
 				data.loc[epoch, 'valid acc'] = val_acc
 			
@@ -383,18 +383,17 @@ def main():
 							value = getattr(args, action.dest)
 							f.write(f'{",".join(action.option_strings)}={value}\n')
 
-	print('End on epoch:', epoch)
 
 	# Job summary
 	timeEnd = time.time()
 	timeTrain = ((timeEnd - timeStart) / 60) / 60 # convert to hr
 	timeItr = args.num_epochs / timeTrain
 	pathSave = pathFullModel.replace('.keras', '_trainingLog.csv')
-	print(f'\nModel saved at: {pathFullModel}')
-	print(f'Summary: {pathModelLoss}')
-	print(f'Training Log: {pathSave}')
-	print(f'Loss: {float(best_val_loss)}')
-	print(f'Training Time: {timeTrain:.2f}hr, {timeItr:.2f}epoch/hr\n')
+	print(f'\nModel saved at:\n  {pathFullModel}')
+	print(f'Summary:\n  {pathModelLoss}')
+	print(f'Training Log:\n  {pathSave}')
+	print(f'Training Time: {timeTrain:.2f}hr, {timeItr:.2f}epoch/hr')
+	print(f'Loss: {float(best_val_loss)}\n')
 	save_file = save_dir + '/best_loss.csv'
 	with open(save_file, 'w') as f:
 		f.write(str(best_val_loss) + '\n')
