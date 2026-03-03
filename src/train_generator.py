@@ -358,9 +358,9 @@ def main():
 				timeTrain = ((timeEnd - timeStart) / 60) / 60  # convert to hr
 				print(
 					f"Epoch: {epoch}{(l - len(str(epoch))) * ' '} | "
-					f"Best Loss: {best_val_loss:.4f} | "
-					f"Loss: {val_loss:.4f} | "
-					f"Validation Accuracy: {val_acc:.4f} | "
+					f"Best Loss: {best_val_loss:.3f} | "
+					f"Loss: {val_loss:.3f} | "
+					f"Validation Accuracy: {val_acc:.3f} | "
 					f"Runtime: {timeTrain:,.2f}hr"
 				)
 
