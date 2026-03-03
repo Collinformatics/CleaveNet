@@ -350,15 +350,10 @@ def main():
 				tf.summary.scalar('loss', val_loss, step=epoch)
 				tf.summary.scalar('accuracy', val_acc, step=epoch)
 
+			print(3 * '\033[F\033[K', end='')  # Clear progress bar
 
-			#vbar.close()
+			# Log data
 			if epoch % 5 == 0:
-				data.loc[epoch, 'loss'] = val_loss
-				data.loc[epoch, 'valid acc'] = val_acc
-			
-			# Save model and weights only if validation loss decreases
-			print(3 * '\033[F\033[K', end='') # Clear progress bar
-			if epoch % 5 == 0:  #
 				timeEnd = time.time()
 				timeTrain = ((timeEnd - timeStart) / 60) / 60  # convert to hr
 				print(
@@ -368,18 +363,18 @@ def main():
 					f"Validation Accuracy: {val_acc:.4f} | "
 					f"Runtime: {timeTrain:,.2f}hr"
 				)
+
+				data.loc[epoch, 'loss'] = val_loss
+				data.loc[epoch, 'valid acc'] = val_acc
+
+			# Save model if validation loss decreases
 			if val_loss < best_val_loss:
-				# Save the model
-				model.save(pathFullModel)
-				
-				#model.save_weights(pathWeights)
 				best_val_loss = val_loss
-				
-				# Save best weights in weights dir
-				with open(pathModelLoss, 'w') as f:
+				model.save(pathFullModel) # Save the model
+				with open(pathModelLoss, 'w') as f: # Save the params
 					f.write(f'Loss: {best_val_loss}\n')
 					for action in parser._actions: # Write job params
-						if action.dest != "help": # skip help action
+						if action.dest != "help":  # skip help action
 							value = getattr(args, action.dest)
 							f.write(f'{",".join(action.option_strings)}={value}\n')
 
