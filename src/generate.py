@@ -65,7 +65,7 @@ print(f'\nTraining Data: {data_path}\n'
       f' Sequence Len: {seqLen}\n')
 
 # Evaluate inputs
-condition = args.model.split('-')[-1] # Training condition
+condition = args.model.split('-')[-1].split('.')[0] # Training condition
 
 dataloader = cleavenet.data.DataLoader(
 	data_path, seed=0, task='generator', model='autoreg', test_split=0.2, dataset=dataset
