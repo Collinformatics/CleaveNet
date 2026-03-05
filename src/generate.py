@@ -13,25 +13,33 @@ from cleavenet.utils import mmps
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-	"--data-path", default="kukreja.csv", type=str, help="file path for the training data"
+	"--data-path", default="kukreja.csv", type=str,
+	help="file path for the training data"
 )
 parser.add_argument(
-	"--model", default=None, type=str, help="file name for the model"
+	"--model", default=None, type=str,
+	help="file name for the model"
 )
 parser.add_argument(
-	"--num-seqs", default=20, type=int, help="number of sequences to be generated"
+	"--num-seqs", default=20, type=int,
+	help="number of sequences to be generated"
 )
 parser.add_argument(
-	"--output-dir", default="generated", type=str, help="Directory to store outputs "
+	"--output-dir", default="generated", type=str,
+	help="Directory to store outputs "
 )
 parser.add_argument(
-	"--repeat-penalty", default=1.0, type=float, help="Repeat penalty factor, for no penalty use 1"
+	"--repeat-penalty", default=1.0, type=float,
+	help="Repeat penalty factor, for no penalty use 1"
 )
 parser.add_argument(
-	"--temperature", default=1.0, type=float, help="Sampling temperature, for standard sampling use 1. For less diverse use 0.7, for more diverse use >1"
+	"--temperature", default=1.0, type=float,
+	help="Sampling temperature, for standard sampling use 1. "
+		 "For less diverse use 0.7, for more diverse use >1"
 )
 parser.add_argument(
-	"--z-scores", default=None, type=str, help="File containing z-scores for conditional generation"
+	"--z-scores", default=None, type=str,
+	help="File containing z-scores for conditional generation"
 )
 args = parser.parse_args()
 
