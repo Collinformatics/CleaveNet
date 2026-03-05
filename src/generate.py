@@ -64,6 +64,9 @@ print(f'\nTraining Data: {data_path}\n'
       #f'      Dataset: {dataset}\n'
       f' Sequence Len: {seqLen}\n')
 
+# Evaluate inputs
+condition = args.model.split('-')[-1] # Training condition
+
 dataloader = cleavenet.data.DataLoader(
 	data_path, seed=0, task='generator', model='autoreg', test_split=0.2, dataset=dataset
 )
@@ -147,7 +150,10 @@ if not os.path.exists(args.output_dir):
 idx = 0
 tag = dataset.replace(" - ", " ").replace(" ", "_")
 while True:
-	save_file = os.path.join(args.output_dir, f'generatedSubs_{idx}-{tag}-penalty_'+str(args.repeat_penalty)+'-temp_'+str(args.temperature)+'.csv')
+	save_file = os.path.join(
+		args.output_dir, f'generatedSubs_{idx}-{tag}-{condition}-penalty_' +
+		str(args.repeat_penalty) + '-temp_' + str(args.temperature) + '.csv'
+	)
 	if not os.path.exists(save_file):
 		break
 	idx += 1
