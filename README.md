@@ -20,15 +20,15 @@ Create conda environment:
 
 Activate the virtual environment:
 
-  conda activate cleavenet
+      conda activate cleavenet
 
 Test GPU activation:
 
-  python testGPU.py
+      python testGPU.py
 
-In the future, we can monitor GPU usage with:
+If you are using an NVIDIA GPU, you can monitor GPU usage with:
 
-  watch -n 1 nvidia-smi
+      watch -n 1 nvidia-smi
 
 
 
