@@ -27,7 +27,9 @@ class DataLoader(object):
 	Creates 1 test/train split for Dataset, or loads saved splits
 	Saves a char2idx dict mapping for each model
 	"""
-	def __init__(self, data_path, seed=0, task='predictor', model='bert', test_split=0.2, dataset='kukreja', use_dataloader=None, rounded=False):
+	def __init__(
+			self, data_path, seed=0, task='predictor', model='bert', 
+			test_split=0.2, dataset='kukreja', use_dataloader=None, rounded=False):
 		self.seed = seed
 		self.model = model  # bert, autoregressive, regression
 		self.dataset = dataset
@@ -44,8 +46,8 @@ class DataLoader(object):
 			from cleavenet.utils import mmps
 			colnames = mmps
 		else:
-			if ' - ' in dataset:
-				colnames = dataset.split(' - ')[0]
+			if '-' in dataset:
+				colnames = dataset.split('-')[0]
 			else:
 				colnames = dataset
 			colnames = [colnames]
@@ -63,8 +65,12 @@ class DataLoader(object):
 		    
 		if os.path.exists(self.out_path):
 			print(f'Loading Splits: {self.out_path}')
-			self.X = list(get_data(self.out_path + 'X_all.csv', names=['sequence']).index)
-			self.y = get_data(self.out_path + 'y_all.csv', index_col=None, names=colnames).values
+			self.X = list(
+				get_data(self.out_path + 'X_all.csv', names=['sequence']).index
+			)
+			self.y = get_data(
+				self.out_path + 'y_all.csv', index_col=None, names=colnames
+			).values
 			self.sequences = self.X
 			if test_split > 0:
 				self.X_train = list(get_data(self.out_path + 'X_train.csv', names=['sequence']).index)

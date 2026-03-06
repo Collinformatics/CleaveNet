@@ -18,16 +18,22 @@ from cleavenet.utils import get_data_dir
 # parse from terminal
 parser = argparse.ArgumentParser() ##
 parser.add_argument(
-	"--alpha", default=0.99, type=float, help="smoothing rate for the exp filter"
+	"--alpha", default=0.99, type=float,
+	help="smoothing rate for the exp filter"
 )
 parser.add_argument(
-	"--batch-size", default=128, type=int, help="batch size"
+	"--batch-size", default=128, type=int,
+	help="batch size"
 )
 parser.add_argument(
-	"--condition", default="randomize", type=str, help="`unconditional` for unconditional generation, `conditional` for conditional training with z-scores only, `randomize`, enables training of both schemes at 50%"
+	"--condition", default="randomize", type=str,
+	help="`unconditional` for unconditional generation, "
+		 "`conditional` for conditional training with z-scores only, "
+		 "`randomize`, enables training of both schemes at 50%"
 )
 parser.add_argument(
-	"--data-path", default="kukreja.csv", type=str, help="file path for the training data"
+	"--data-path", default="kukreja.csv", type=str,
+	help="file path for the training data"
 )
 parser.add_argument(
 	"--learning-rate", default=0.0005, type=float, help="learning rate for LSTM"
@@ -90,7 +96,10 @@ def main():
 		model_label = '/AUTOREG_'+args.model_type
 		args.seq_len+=1 # account for start token
 		#dataloader = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='autoreg', test_split=0.2, dataset=dataset, rounded=True)
-		dataloader = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='autoreg', test_split=0.2, dataset=dataset, rounded=args.round)
+		dataloader = cleavenet.data.DataLoader(
+			data_path, seed=0, task='generator', model='autoreg',
+			test_split=0.2, dataset=dataset, rounded=args.round
+		)
 		start_id = dataloader.char2idx[dataloader.START]
 		end_id = dataloader.char2idx[dataloader.STOP]   
 		print("start_id", start_id)

@@ -1,6 +1,7 @@
 import argparse
 import datetime
 import os
+import sys
 
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -21,30 +22,62 @@ for i,m in enumerate(mmps):
 
 #parse from terminal
 parser = argparse.ArgumentParser()
-parser.add_argument("--num-epochs", default=50, type=int,
-                    help="number of epochs")
-parser.add_argument("--model-type", default='transformer', type=str,
-                    help="transformer or lstm architecture")
-parser.add_argument("--max-len", default=10, type=int,
-                    help="maximum sequence length to add to dataset")
-parser.add_argument("--batch-size", default=128, type=int,
-                    help="batch size range")
-parser.add_argument("--learning-rate", default=0.005, type=float,
-                    help="learning rate")
-parser.add_argument("--d-model", default=32, type=int,
-                    help="dimensions of model")
-parser.add_argument("--log-freq", default=50, type=int,
-                    help="frequency to log to tensorboard")
-parser.add_argument("--save-freq", default=100, type=int,
-                    help="frequency to save weights")
-parser.add_argument("--alpha", default=0.99, type=float,
-                    help="smoothing rate for the exp filter")
-parser.add_argument("--split", default=0.8, type=float,
-                    help="train val split ratio for ensembling")
-parser.add_argument("--regu", default=0.01, type=float,
-                    help=" Regularization parameter for LSTM")
-parser.add_argument("--ensemble", default=5, type=int,
-                    help="Model iterations to use for ensemble uncertainty calculation")
+parser.add_argument(
+    "--alpha", default=0.99, type=float,
+    help="Smoothing rate for the exp filter"
+)
+parser.add_argument(
+    "--batch-size", default=128, type=int,
+    help="Batch size range"
+)
+parser.add_argument(
+	"--data-path", default="kukreja.csv", type=str,
+	help="File path for the training data"
+)
+parser.add_argument(
+	"--data-EV", default="Mpro2_ZPred_6AA_ExtValid_MinCounts10.csv", type=str,
+	help="File path for the External Validation (EV) data"
+)
+parser.add_argument(
+    "--d-model", default=32, type=int,
+    help="Dimensions of model"
+)
+parser.add_argument(
+    "--ensemble", default=5, type=int,
+    help="Model iterations to use for ensemble uncertainty calculation"
+)
+parser.add_argument(
+    "--learning-rate", default=0.005, type=float,
+    help="Learning rate"
+)
+parser.add_argument(
+    "--log-freq", default=50, type=int,
+    help="Frequency to log to tensorboard"
+)
+parser.add_argument(
+    "--max-len", default=10, type=int,
+    help="Maximum sequence length to add to dataset"
+)
+parser.add_argument(
+    "--model-type", default='transformer', type=str,
+    help="Transformer or lstm architecture"
+)
+parser.add_argument(
+    "--num-epochs", default=50, type=int,
+    help="Number of epochs"
+)
+parser.add_argument(
+    "--save-freq", default=100, type=int,
+    help="frequency to save weights"
+)
+parser.add_argument(
+    "--split", default=0.8, type=float,
+    help="Train val split ratio for ensembling"
+)
+parser.add_argument(
+    "--regu", default=0.01, type=float,
+    help=" Regularization parameter for LSTM"
+)
 args = parser.parse_args()
 
 ###################################################################################################
@@ -53,7 +86,33 @@ args = parser.parse_args()
 
 # Get path to data
 data_dir = get_data_dir()
-data_path = os.path.join(data_dir, "kukreja.csv")
+if 'data/' in args.data_path:
+    data_path = args.data_path
+else:
+    data_path = os.path.join('data', args.data_path)
+if 'data/' in args.data_pathEV:
+    data_pathEV = args.data_pathEV
+else:
+    data_pathEV = os.path.join('data', args.data_pathEV)
+datasetEV = data_pathEV.replace('data/', '').replace('.csv', '')
+
+# Evaluate data_path
+if '_' in args.data_path and 'AA' in args.data_path:
+    dataset = args.data_path.replace('data/', '').replace('.csv', '')
+    sfname = args.data_path.split('_')
+    for s in sfname:
+        if 'AA' in s:
+            args.max_len = int(s.strip('AA'))
+else:
+    dataset = args.data_path.strip('.csv')
+# f'Training Dataset: {dataset}\n'
+print(f'\nTraining Model: {args.model_type}\n'
+      f'Dataset: {dataset}\n'
+      f'Training Data: {data_path}\n'
+      f'Dataset Ext Valid: {datasetEV}\n'
+      f'Ext Valid Data: {data_pathEV}\n'
+      f'Max Length: {args.max_len}\n'
+      f'Ensemble: {args.ensemble}\n')
 
 random_seed = list(range(args.ensemble))
 
@@ -61,25 +120,75 @@ random_seed = list(range(args.ensemble))
 # Function to run
 ###################################################################################################
 def main():
-    # Load in kukreja data
-    kukreja = cleavenet.data.DataLoader(data_path, seed=0, task='regression', model=args.model_type, test_split=0.2,
-                                        dataset='kukreja')
+    if 'kukreja' in dataset:
+        # Load in kukreja data
+        dataloader = cleavenet.data.DataLoader(
+            data_path, seed=0, task='regression',
+            model=args.model_type, test_split=0.2,
+            dataset='kukreja'
+        )
 
-    bhatia = cleavenet.data.DataLoader(data_path, seed=0, task='regression', model=args.model_type, test_split=0,
-                                       dataset='bhatia',
-                                       use_dataloader=kukreja)
-    x_bhatia = cleavenet.data.tokenize_sequences(bhatia.X, kukreja)
-    if args.model_type == 'transformer':
-        cls_idx = kukreja.char2idx[kukreja.CLS]
-        x_bhatia = np.stack([np.append(np.array(cls_idx), s) for s in x_bhatia])
-    y_bhatia = bhatia.y
+        # Load external validation dataset
+        dataloaderEV = cleavenet.data.DataLoader(
+            data_pathEV, seed=0, task='regression',
+            model=args.model_type, test_split=0,
+            dataset='bhatia', use_dataloader=dataloader
+        )
+        xExtValid = cleavenet.data.tokenize_sequences(dataloaderEV.X, dataloader)
+        if args.model_type == 'transformer':
+            cls_idx = dataloader.char2idx[dataloader.CLS]
+            xExtValid = np.stack([np.append(np.array(cls_idx), s) for s in xExtValid])
+        yExtValid = dataloaderEV.y
+    else:
+        dataloader = cleavenet.data.DataLoader(
+            data_path, seed=0, task='regression',
+            model=args.model_type, test_split=0.2,
+            dataset=dataset
+        )
+        # Load external validation dataset
+        dataloaderEV = cleavenet.data.DataLoader(
+            data_pathEV, seed=0, task='regression',
+            model=args.model_type, test_split=0,
+            dataset=datasetEV, use_dataloader=dataloader
+        )
+        sys.exit()
+        xExtValid = cleavenet.data.tokenize_sequences(dataloaderEV.X, dataloader)
+        if args.model_type == 'transformer':
+            cls_idx = dataloader.char2idx[dataloader.CLS]
+            xExtValid = np.stack([np.append(np.array(cls_idx), s) for s in xExtValid])
+        yExtValid = dataloaderEV.y
+
+
+    N = len(dataloader.y)
+    Ntest = len(dataloader.y_test)
+    Ntrain = len(dataloader.X_train)
+    print(f'\nDataLoader: N={N:,}\n'
+          f' y_train: {Ntrain:,}, {100 * round(Ntrain / N, 2)} %\n'
+          f'  y_test: {Ntest:,}, {100 * round(Ntest / N, 2)} %\n')
+
+    print(f'External Validation:\n'
+          f'{xExtValid}\n'
+          f'  x: {len(xExtValid)}\n'
+          f'  y: {len(yExtValid)}\n')
+    # sys.exit()
 
     # Run ensemble training
     for ensemble in range(args.ensemble):
         # Train/valid splits for each ensemble, use pre-split data to preserve test set
-        X_train, X_valid, y_train, y_valid = train_test_split(kukreja.X_train, kukreja.y_train, test_size=1-args.split,
-                                                              random_state=random_seed[ensemble])
-        vocab_size = len(kukreja.char2idx)
+        X_train, X_valid, y_train, y_valid = train_test_split(
+            dataloader.X_train, dataloader.y_train, test_size=1-args.split,
+            random_state=random_seed[ensemble]
+        )
+        print(f'Split Training Set:\n'
+              f'* Train:\n'
+              f'    X: {len(X_train)}, {100 * round(len(X_train) / N, 2)} %\n'
+              f'    Y: {len(y_train)}, {100 * round(len(y_train) / N, 2)} %\n'
+              f'* Validation:\n'
+              f'    X: {len(X_valid)}, {100 * round(len(X_valid) / N, 2)} %\n'
+              f'    Y: {len(y_valid)}, {100 * round(len(y_valid) / N, 2)} %\n')
+        sys.exit()
+
+        vocab_size = len(dataloader.char2idx)
         print("vocab size", vocab_size)
         num_samples = len(X_train)
         num_valid_samples = len(X_valid)
@@ -93,8 +202,10 @@ def main():
             transformer=False
             embedding_dim= 22 # args.d_model
             dropout=0.25
-            model = cleavenet.models.RNNPredictor(vocab_size, embedding_dim, args.d_model,
-                                                  dropout, args.regu, args.max_len, len(mmps), mask_zero=True)
+            model = cleavenet.models.RNNPredictor(
+                vocab_size, embedding_dim, args.d_model, dropout,
+                args.regu, args.max_len, len(mmps), mask_zero=True
+            )
             lr = args.learning_rate # 0.005
 
         elif args.model_type == 'transformer':
@@ -124,6 +235,8 @@ def main():
 
         optimizer = tf.optimizers.Adam(lr)
 
+        # sys.exit()
+
         @tf.function  # comment out for eager execution (if you want to debug)
         def train_step(x, y):
             with tf.GradientTape() as tape:
@@ -148,11 +261,17 @@ def main():
 
         # LOGGING
         current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-        save_dir = os.path.join('save' + model_label, '{}_PREDICTOR'.format(current_time))
+        save_dir = os.path.join(
+            'save' + model_label, '{}_PREDICTOR'.format(current_time)
+        )
         os.makedirs(save_dir)
-        train_log_dir = os.path.join('logs' + model_label, '{}_PREDICTOR_train'.format(current_time))
+        train_log_dir = os.path.join(
+            'logs' + model_label, '{}_PREDICTOR_train'.format(current_time)
+        )
         train_summary_writer = tf.summary.create_file_writer(train_log_dir)
-        val_log_dir = os.path.join('logs' + model_label, '{}_PREDICTOR_val'.format(current_time))
+        val_log_dir = os.path.join(
+            'logs' + model_label, '{}_PREDICTOR_val'.format(current_time)
+        )
         val_summary_writer = tf.summary.create_file_writer(val_log_dir)
 
         for epoch in range(args.num_epochs):
@@ -160,7 +279,10 @@ def main():
             pbar = tqdm(range(num_samples // args.batch_size))
             for iter in pbar:
                 # Grab a batch and train
-                x, y = cleavenet.data.get_batch(X_train, y_train, args.batch_size, kukreja, transformer=transformer)
+                x, y = cleavenet.data.get_batch(
+                    X_train, y_train, args.batch_size,
+                    dataloader, transformer=transformer
+                )
                 loss, y_hat = train_step(x, y)
                 rmse = model.compute_rmse(y, y_hat)  # compute train rmse
 
@@ -180,9 +302,12 @@ def main():
                 val_loss = []
                 val_rmse = []
                 for v_iter in vbar:
-                    xv, yv = cleavenet.data.get_batch(X_valid, y_valid, args.batch_size, kukreja, transformer=transformer)
+                    xv, yv = cleavenet.data.get_batch(
+                        X_valid, y_valid, args.batch_size,
+                        dataloader, transformer=transformer
+                    )
                     yv_hat = model(xv, training=False)
-                    val_loss.append(model.compute_loss(yv, yv_hat)*args.batch_size)  # compute loss
+                    val_loss.append(model.compute_loss(yv, yv_hat)*args.batch_size) # compute loss
                     val_rmse.append(model.compute_rmse(yv, yv_hat)*args.batch_size) # compute val rmse
                 val_loss = np.sum(val_loss)/len(X_valid) # batch-averaged loss
                 val_rmse = np.sum(val_rmse)/len(X_valid)
@@ -196,16 +321,23 @@ def main():
                     if val_loss < best_val_loss:
                         print(f"Saving with val loss: {val_loss:.4f}")
                         print(f"Val rmse: {val_rmse:.4f}")
-                        model.save_weights(os.path.join(save_dir, \
-                                                        "{}.weights.h5".format("model")))
+                        model.save_weights(os.path.join(
+                            save_dir, "{}.weights.h5".format("model")))
                         best_val_loss = val_loss
 
-                ## run bhatia validation
-                b_yv_hat = model(x_bhatia, training=False)
-                b_yv_hat_condensed = tf.concat([tf.expand_dims(b_yv_hat[:,index], axis=1) for index in bhatia_index], axis=1)
-                b_val_loss = model.compute_loss(y_bhatia[:, :len(bhatia_index)], b_yv_hat_condensed) # compute loss
-                b_val_rmse = model.compute_rmse(y_bhatia[:, :len(bhatia_index)], b_yv_hat_condensed)
-                print("bhatia loss:", b_val_loss)
+                ## run external validation
+                b_yv_hat = model(xExtValid, training=False)
+                b_yv_hat_condensed = tf.concat(
+                    [tf.expand_dims(b_yv_hat[:,index], axis=1) for index in bhatia_index],
+                    axis=1
+                )
+                b_val_loss = model.compute_loss(
+                    yExtValid[:, :len(bhatia_index)], b_yv_hat_condensed
+                ) # compute loss
+                b_val_rmse = model.compute_rmse(
+                    yExtValid[:, :len(bhatia_index)], b_yv_hat_condensed
+                )
+                print("External validation loss:", b_val_loss)
                 # saving
                 with val_summary_writer.as_default():
                     tf.summary.scalar('b-loss', b_val_loss, step=epoch)
@@ -214,10 +346,11 @@ def main():
                     # save weights only if validation loss decreases
                     print("best val loss:", best_b_val_loss)
                     if b_val_loss < best_b_val_loss:
-                        print(f"Saving with bhatia val loss: {b_val_loss:.4f}")
-                        print(f"bhatia Val rmse: {b_val_rmse}")
-                        model.save_weights(os.path.join(save_dir, \
-                                                        "{}.weights.h5".format("best-bhatia-model")))
+                        print(f"Saving with ext valid loss: {b_val_loss:.4f}")
+                        print(f"External valid rmse: {b_val_rmse}")
+                        model.save_weights(os.path.join(
+                            save_dir,
+                            "{}.weights.h5".format(f"best-{dataset}-model")))
                         best_b_val_loss = b_val_loss
 
         save_file = save_dir + '/best_loss.csv'
@@ -233,8 +366,10 @@ def main():
 
         # Re-build the predictor model
         if args.model_type == 'lstm':
-            model = cleavenet.models.RNNPredictor(vocab_size, embedding_dim, args.d_model,
-                                                  dropout, args.regu, args.max_len, len(mmps))
+            model = cleavenet.models.RNNPredictor(
+                vocab_size, embedding_dim, args.d_model,
+                dropout, args.regu, args.max_len, len(mmps)
+            )
         elif args.model_type == 'transformer':
             model = cleavenet.models.TransformerEncoder(
                 num_layers=num_layers,
@@ -244,21 +379,28 @@ def main():
                 vocab_size=vocab_size,
                 dropout_rate=dropout,
                 output_dim=len(mmps),
-                pool_outputs=True)
+                pool_outputs=True
+            )
 
-        model.build((len(kukreja.X_test), None))
+        model.build((len(dataloader.X_test), None))
         model.summary()
         model.load_weights(checkpoint_path_final)  # load weights from best checkpoint
 
 
-        xt, yt = cleavenet.data.get_batch(kukreja.X_test, kukreja.y_test, len(kukreja.X_test), kukreja, test=True, transformer=transformer)
+        xt, yt = cleavenet.data.get_batch(
+            dataloader.X_test, dataloader.y_test, len(dataloader.X_test), dataloader,
+            test=True, transformer=transformer
+        )
         yt_hat = model(xt, training=False)  # forward pass
         embeddings = model.last_layer_embeddings
         test_rmse = model.compute_rmse(yt, yt_hat, axis=0)  # compute val rmse
         print(test_rmse)
 
         # Save embeddings for later
-        np.save(os.path.join(ensemble_dir, 'test_weighted_cluster_embeddings.npy'), np.array(embeddings))
+        np.save(
+            os.path.join(ensemble_dir, 'test_weighted_cluster_embedngsdi.npy'),
+            np.array(embeddings)
+        )
 
         # Plot results
         # Scatterplot of predicted vs true
