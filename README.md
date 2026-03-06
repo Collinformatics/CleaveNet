@@ -33,4 +33,23 @@ If you are using an NVIDIA GPU, you can monitor GPU usage with:
       watch -n 1 nvidia-smi
 
 
+## Generator:
+
+Training:
+
+- Train a model that can predice protein substrates.
+
+  Multiple parameters can be adjusted, to print the options run:
+
+      python src/train_generator.py --help
+
+- You can train the generator with:
+
+      python src/train_generator.py --data-path <filepath>
+
+
+
+
+
+
 
