@@ -35,7 +35,7 @@ parser.add_argument(
 	help="File path for the training data"
 )
 parser.add_argument(
-	"--data-EV", default="Mpro2_ZPred_6AA_ExtValid_MinCounts10.csv", type=str,
+	"--data-pathEV", default="Mpro2_ZPred_6AA_ExtValid_MinCounts10.csv", type=str,
 	help="File path for the External Validation (EV) data"
 )
 parser.add_argument(
@@ -151,7 +151,7 @@ def main():
             model=args.model_type, test_split=0,
             dataset=datasetEV, use_dataloader=dataloader
         )
-        sys.exit()
+        # sys.exit()
         xExtValid = cleavenet.data.tokenize_sequences(dataloaderEV.X, dataloader)
         if args.model_type == 'transformer':
             cls_idx = dataloader.char2idx[dataloader.CLS]
@@ -167,7 +167,6 @@ def main():
           f'  y_test: {Ntest:,}, {100 * round(Ntest / N, 2)} %\n')
 
     print(f'External Validation:\n'
-          f'{xExtValid}\n'
           f'  x: {len(xExtValid)}\n'
           f'  y: {len(yExtValid)}\n')
     # sys.exit()

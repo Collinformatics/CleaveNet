@@ -29,37 +29,44 @@ parser.add_argument(
 	"--condition", default="randomize", type=str,
 	help="`unconditional` for unconditional generation, "
 		 "`conditional` for conditional training with z-scores only, "
-		 "`randomize`, enables training of both schemes at 50%"
+		 "`randomize`, enables training of both schemes at 50%%"
 )
 parser.add_argument(
 	"--data-path", default="kukreja.csv", type=str,
 	help="file path for the training data"
 )
 parser.add_argument(
-	"--learning-rate", default=0.0005, type=float, help="learning rate for LSTM"
+	"--learning-rate", default=0.0005, type=float,
+	help="learning rate for LSTM"
 )
 parser.add_argument(
-	"--model-type", default="transformer", type=str, help="transformer or LSTM"
+	"--model-type", default="transformer", type=str,
+	help="transformer or LSTM"
 )
 parser.add_argument(
-	"--d-model", default=64, type=int, help="model paramters"
+	"--d-model", default=64, type=int,
+	help="model paramters"
 )
 parser.add_argument(
-	"--num-epochs", default=300, type=int, help="number of epochs"
+	"--num-epochs", default=300, type=int,
+	help="number of epochs"
 )
 parser.add_argument(
-	"--seq-len", default=10, type=int, help="input sequence length to split training text into"
+	"--seq-len", default=10, type=int,
+	help="input sequence length to split training text into"
 )
 parser.add_argument(
-	"--random-seed", default=0, type=int, help="random seed"
+	"--random-seed", default=0, type=int,
+	help="random seed"
 )
 parser.add_argument(
-	"--round", action="store_true", help="round Z-scores"
+	"--round", action="store_true",
+	help="round Z-scores"
 )
 parser.add_argument(
-	"--training-scheme", default='autoreg', type=str, help="`autoreg` for autoregressive training, `bert` for Bert MLM training"
+	"--training-scheme", default='autoreg', type=str,
+	help="`autoreg` for autoregressive training, `bert` for Bert MLM training"
 )
-
 args = parser.parse_args()
 args.model_type = args.model_type.lower()
 
