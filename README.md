@@ -1,34 +1,34 @@
 # Installation:
 
-There are 2 ways to install based on your hardware. If you have an Nvidia GPU, use the first option, if not use the second option.
+These instructions will walk you through installing the program in the terminal.
 
-1) Nvidia GPU Enabled Install:
+- Note: If you are using a Windows OS, you need to install and use WSL.
 
-  Use WSL Clone the GitHub
-  
+Clone the GitHub
+
     git clone https://github.com/Collinformatics/CleaveNet
-  
-  Create conda environment:
 
-     conda env create -f environment.yml
+Create conda environment:
 
-  Activate the virtual environment:
+- If you are using MacOS run:
 
-    conda activate cleavenet
+      conda env create -f environment_mac.yml
 
-  Test GPU activation:
+- If not, run:
 
-    python testGPU.py
+       conda env create -f environment.yml
 
-  In the future, we can monitor GPU usage with:
-  
-    watch -n 1 nvidia-smi
+Activate the virtual environment:
 
- 
-2) Non-GPU Install:
+  conda activate cleavenet
 
-  Intall Python and use "requirements.txt" to install the python modules
+Test GPU activation:
 
-    pip install -r requirements.txt
+  python testGPU.py
+
+In the future, we can monitor GPU usage with:
+
+  watch -n 1 nvidia-smi
+
 
 
