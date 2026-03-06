@@ -2,7 +2,9 @@
 
 These instructions will walk you through installing the program in the terminal.
 
-- Note: If you are using a Windows OS, you need to install and use WSL.
+- Requirements:
+    - If you are using a Windows OS, you need to install and use WSL.
+    - You need to have conda installed.
 
 Clone the GitHub
 
