@@ -1,0 +1,36 @@
+name: cleavenet
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  # Python version
+  - python=3.11
+
+  # macOS only
+  - tensorflow-macos
+  - tensorflow-metal
+
+  # Data & ML libraries
+  - scikit-learn
+  - pandas
+  - matplotlib
+  - xlrd
+  - mpld3
+  - jupyter
+  - ipykernel
+
+  # IDE / optional GUI
+  - spyder
+
+  # pip packages (installed inside the conda environment)
+  - pip
+  - pip:
+      - seaborn
+      - logomaker
+      - tqdm
+      - itables
+      - seqlogo
+      - umap-learn
+      - peptides
+      - jellyfish
+
