@@ -182,25 +182,28 @@ def main():
     # sys.exit()
 
     # Run ensemble training
+    init = True
+    results = {}
     for ensemble in range(args.ensemble):
         # Train/valid splits for each ensemble, use pre-split data to preserve test set
         X_train, X_valid, y_train, y_valid = train_test_split(
             dataloader.X_train, dataloader.y_train, test_size=1-args.split,
             random_state=random_seed[ensemble]
         )
-        print(f'Split Training Set:')
-        print(f'* Train:\n'
-              f'    X: {len(X_train)}, {100 * round(len(X_train) / N, 2)} %\n'
-              f'    Y: {len(y_train)}, {100 * round(len(y_train) / N, 2)} %')
-        print(f'* Validation:\n'
-              f'    X: {len(X_valid)}, {100 * round(len(X_valid) / N, 2)} %\n'
-              f'    Y: {len(y_valid)}, {100 * round(len(y_valid) / N, 2)} %\n')
-        # sys.exit()
 
         vocab_size = len(dataloader.char2idx)
-        print("vocab size", vocab_size)
         num_samples = len(X_train)
         num_valid_samples = len(X_valid)
+        if init:
+            init = False
+            print(f'Split Training Set:')
+            print(f'* Train:\n'
+                  f'    X: {len(X_train)}, {100 * round(len(X_train) / N, 2)} %\n'
+                  f'    Y: {len(y_train)}, {100 * round(len(y_train) / N, 2)} %')
+            print(f'* Validation:\n'
+                  f'    X: {len(X_valid)}, {100 * round(len(X_valid) / N, 2)} %\n'
+                  f'    Y: {len(y_valid)}, {100 * round(len(y_valid) / N, 2)} %\n')
+            print("vocab size", vocab_size)
         print("Training samples:", num_samples, "Validation samples: ", num_valid_samples)
 
         run_name = "run-%d" % ensemble
@@ -267,7 +270,9 @@ def main():
         running_loss = None
         running_rmse = None
         best_val_loss = float('inf')
+        best_val_loss_path = ''
         best_extVal_loss = float('inf')
+        best_extVal_loss_path = ''
 
         # LOGGING
         current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -334,8 +339,10 @@ def main():
                     if val_loss < best_val_loss:
                         # print(f"Saving with val loss: {val_loss:.4f}")
                         # print(f"Val rmse: {val_rmse:.4f}")
-                        model.save_weights(os.path.join(
-                            save_dir, "{}.weights.h5".format("model")))
+                        best_val_loss_path = os.path.join(
+                            save_dir, "{}.weights.h5".format("model")
+                        )
+                        model.save_weights(best_val_loss_path)
                         best_val_loss = val_loss
 
                 ## run external validation
@@ -373,11 +380,17 @@ def main():
                     if extVal_loss < best_extVal_loss:
                         # print(f"Saving with ext valid loss: {extVal_loss:.4f}")
                         # print(f"External valid rmse: {extVal_rmse}")
-                        model.save_weights(os.path.join(
+                        best_extVal_loss_path = os.path.join(
                             save_dir,
-                            "{}.weights.h5".format(f"best-{dataset}-model")))
+                            "{}.weights.h5".format(f"best-{dataset}-model")
+                        )
+                        model.save_weights(best_val_loss_path)
                         best_extVal_loss = extVal_loss
-        print()
+        # print(f'Ensemble: {ensemble}\n'
+        #       f'* Best Loss: {best_val_loss:.3f}\n'
+        #       f'  Save: {best_val_loss_path}\n'
+        #       f'* Best ExtVal Loss: {best_extVal_loss:.3f}\n'
+        #       f'  Save: {best_extVal_loss_path}\n') ##
 
         save_file = save_dir + '/best_loss.csv'
         with open(save_file, 'w') as f:
@@ -387,8 +400,11 @@ def main():
         ##################################
         # After training assess performance of trained model in full set of test data
         # using load model here so we can use the best checkpoint
+        ensembleStr = str(ensemble)
         ensemble_dir = save_dir
         checkpoint_path_final = os.path.join(ensemble_dir, "model.weights.h5")
+        results[ensembleStr] = {}
+        results[ensembleStr]['Weights'] = checkpoint_path_final
 
         # Re-build the predictor model
         if args.model_type == 'lstm':
@@ -411,6 +427,7 @@ def main():
         model.build((len(dataloader.X_test), None))
         model.summary()
         model.load_weights(checkpoint_path_final)  # load weights from best checkpoint
+        print(f'Loaded Weights: {checkpoint_path_final}')
 
 
         xt, yt = cleavenet.data.get_batch(
@@ -420,7 +437,8 @@ def main():
         yt_hat = model(xt, training=False)  # forward pass
         embeddings = model.last_layer_embeddings
         test_rmse = model.compute_rmse(yt, yt_hat, axis=0)  # compute val rmse
-        print(f'RMSE:\n* {test_rmse}')
+        print(f'RMSE:\n* {test_rmse}\n')
+        results[ensembleStr]['RMSE'] = test_rmse
 
         # Save embeddings for later
         np.save(
@@ -433,6 +451,14 @@ def main():
         plotter.plot_parity(yt, yt_hat, enzCol, ensemble_dir)
         # plot RMSE of all MMP families
         plotter.plot_rmse(test_rmse, enzCol, ensemble_dir)
+
+    # Print results
+    for ens, data in results.items():
+        print(f'Ensemble: {ens}')
+        for k, v in data.items():
+            print(f'  {k}: {v}')
+        print()
+
 
 if __name__ == "__main__":
     main()
