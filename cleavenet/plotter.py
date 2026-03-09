@@ -44,8 +44,8 @@ def plot_rmse(rmse, mmps, save_path):
     plt.ylabel("RMSE")
     plt.ylim(0,1)
     plt.tight_layout()
-    np.savetxt(save_path + 'rmse.csv', rmse, delimiter=", ", fmt='% s')
-    save_file = save_path + 'rmse.svg'
+    np.savetxt(save_path + '_rmse.csv', rmse, delimiter=", ", fmt='% s')
+    save_file = save_path + '_rmse.svg'
     fig.savefig(save_file)
 
 
@@ -58,8 +58,8 @@ def plot_mae(mae, mmps, save_path):
     plt.ylabel('MAE')
     plt.ylim(0,1)
     plt.tight_layout()
-    np.savetxt(save_path+'mae.csv', mae, delimiter=", ", fmt='% s')
-    save_file = save_path+'mae.svg'
+    np.savetxt(save_path+'_mae.csv', mae, delimiter=", ", fmt='% s')
+    save_file = save_path+'_mae.svg'
     fig.savefig(save_file)
 
 

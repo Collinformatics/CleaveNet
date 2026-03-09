@@ -839,7 +839,9 @@ def inference(model, dataloader, causal=False, seq_len=10, penalty=1, verbose=Fa
     return generated_seq
 
 
-def prediction(dataPath, gen_data, generated_dir, dataset, model_weights, true_zscores=None, trueEnz=None, checkpoint_dir='weights/', predictor_model_type='transformer', number_top_candidates=50):
+def prediction(dataPath, gen_data, generated_dir, dataset, model_weights,
+               true_zscores=None, trueEnz=None, checkpoint_dir='weights/',
+               predictor_model_type='transformer', number_top_candidates=50):
     if not os.path.exists(generated_dir):
         os.mkdir(generated_dir)
     if predictor_model_type == 'transformer':
@@ -859,8 +861,9 @@ def prediction(dataPath, gen_data, generated_dir, dataset, model_weights, true_z
             'lstm_4/'
         ]
     
-    dataloader = cleavenet.data.DataLoader(dataPath, seed=0, task='regression', model=predictor_model_type, test_split=0.2,
-                                        dataset=dataset)
+    dataloader = cleavenet.data.DataLoader(
+        dataPath, seed=0, task='regression', model=predictor_model_type,
+        test_split=0.2, dataset=dataset)
     
     max_seq_len = max([len(s) for s in gen_data])
     gen_data = [cleavenet.data.pad(seq, max_seq_len=max_seq_len, pad_token='-') for seq in gen_data]

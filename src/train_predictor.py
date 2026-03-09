@@ -275,17 +275,23 @@ def main():
         best_extVal_loss_path = ''
 
         # LOGGING
-        current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-        save_dir = os.path.join(
-            'save' + model_label, '{}_PREDICTOR'.format(current_time)
-        )
-        os.makedirs(save_dir)
+        # current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        idx = 0
+        while True:
+            current_time = datetime.datetime.now().strftime("%Y%m%d")
+            save_dir = os.path.join(
+                'save' + model_label, f'{current_time}-{idx}_PREDICTOR'
+            )
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+                break
+            idx += 1
         train_log_dir = os.path.join(
-            'logs' + model_label, '{}_PREDICTOR_train'.format(current_time)
+            'logs' + model_label, f'{current_time}-{idx}_PREDICTOR'
         )
         train_summary_writer = tf.summary.create_file_writer(train_log_dir)
         val_log_dir = os.path.join(
-            'logs' + model_label, '{}_PREDICTOR_val'.format(current_time)
+            'logs' + model_label, f'{current_time}-{idx}_PREDICTOR_val'
         )
         val_summary_writer = tf.summary.create_file_writer(val_log_dir)
 
