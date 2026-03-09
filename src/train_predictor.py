@@ -420,8 +420,7 @@ def main():
         yt_hat = model(xt, training=False)  # forward pass
         embeddings = model.last_layer_embeddings
         test_rmse = model.compute_rmse(yt, yt_hat, axis=0)  # compute val rmse
-        print(f'RMSE:\n{test_rmse}')
-        sys.exit()
+        print(f'RMSE:\n* {test_rmse}')
 
         # Save embeddings for later
         np.save(
