@@ -267,7 +267,7 @@ def main():
         running_loss = None
         running_rmse = None
         best_val_loss = float('inf')
-        best_b_val_loss = float('inf')
+        best_extVal_loss = float('inf')
 
         # LOGGING
         current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -344,10 +344,10 @@ def main():
                     [tf.expand_dims(ext_yv_hat[:,index], axis=1) for index in enzIdx],
                     axis=1
                 )
-                ext_val_loss = model.compute_loss(
+                extVal_loss = model.compute_loss(
                     yExtValid[:, :len(enzIdx)], ext_yv_hat_condensed
                 ) # compute loss
-                ext_val_rmse = model.compute_rmse(
+                extVal_rmse = model.compute_rmse(
                     yExtValid[:, :len(enzIdx)], ext_yv_hat_condensed
                 )
                 print(1 * '\033[F\033[K', end='')  # Clear progress bar
@@ -359,25 +359,25 @@ def main():
                         f'Best Loss: {best_val_loss:.3f} | '
                         f'Loss: {val_loss:.3f} | '
                         f'Val RMSE: {val_rmse:.3f} | '
-                        f'Ext Val loss: {ext_val_loss.numpy():.3f}'
+                        f'Ext Val loss: {extVal_loss.numpy():.3f}'
                     )
-                # print("External validation loss:", ext_val_loss)
+                # print("External validation loss:", extVal_loss)
                 # saving
                 with val_summary_writer.as_default():
-                    tf.summary.scalar('b-loss', ext_val_loss, step=epoch)
-                    tf.summary.scalar('b-rmse', ext_val_rmse, step=epoch)
+                    tf.summary.scalar('b-loss', extVal_loss, step=epoch)
+                    tf.summary.scalar('b-rmse', extVal_rmse, step=epoch)
 
                     # save weights only if validation loss decreases
-                    # print("best val loss:", best_ext_val_loss)
+                    # print("best val loss:", best_extVal_loss)
                     # sys.exit()
-                    if ext_val_loss < best_ext_val_loss:
-                        # print(f"Saving with ext valid loss: {ext_val_loss:.4f}")
-                        # print(f"External valid rmse: {ext_val_rmse}")
+                    if extVal_loss < best_extVal_loss:
+                        # print(f"Saving with ext valid loss: {extVal_loss:.4f}")
+                        # print(f"External valid rmse: {extVal_rmse}")
                         model.save_weights(os.path.join(
                             save_dir,
                             "{}.weights.h5".format(f"best-{dataset}-model")))
-                        best_ext_val_loss = ext_val_loss
-            print()
+                        best_extVal_loss = extVal_loss
+        print()
 
         save_file = save_dir + '/best_loss.csv'
         with open(save_file, 'w') as f:
