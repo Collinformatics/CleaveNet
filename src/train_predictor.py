@@ -1,5 +1,6 @@
 import argparse
 import datetime
+import math
 import os
 import sys
 
@@ -12,13 +13,8 @@ from tqdm import tqdm
 
 import cleavenet
 from cleavenet import plotter
-from cleavenet.utils import get_data_dir, mmps
+from cleavenet.utils import get_data_dir
 
-bhatia_mmps = ['MMP1', 'MMP10', 'MMP12', 'MMP13', 'MMP17', 'MMP3', 'MMP7']
-bhatia_index = []
-for i,m in enumerate(mmps):
-    if m in bhatia_mmps:
-        bhatia_index.append(i)
 
 #parse from terminal
 parser = argparse.ArgumentParser()
@@ -121,6 +117,15 @@ random_seed = list(range(args.ensemble))
 ###################################################################################################
 def main():
     if 'kukreja' in dataset:
+        from cleavenet.utils import get_data_dir, mmps
+
+        enzCol = mmps
+        enzList = ['MMP1', 'MMP10', 'MMP12', 'MMP13', 'MMP17', 'MMP3', 'MMP7']
+        enzIdx = []
+        for i, m in enumerate(enzCol):
+            if m in enzList:
+                enzIdx.append(i)
+
         # Load in kukreja data
         dataloader = cleavenet.data.DataLoader(
             data_path, seed=0, task='regression',
@@ -140,6 +145,10 @@ def main():
             xExtValid = np.stack([np.append(np.array(cls_idx), s) for s in xExtValid])
         yExtValid = dataloaderEV.y
     else:
+        enzCol = [dataset.split('_')[0]]
+        enzList = enzCol
+        enzIdx = [i for i in range(len(enzList))]
+        
         dataloader = cleavenet.data.DataLoader(
             data_path, seed=0, task='regression',
             model=args.model_type, test_split=0.2,
@@ -169,6 +178,7 @@ def main():
     print(f'External Validation:\n'
           f'  x: {len(xExtValid)}\n'
           f'  y: {len(yExtValid)}\n')
+    print(f'Enzyme Col: {enzCol}\nEnzyme List: {enzList}\nIdx: {enzIdx}\n')
     # sys.exit()
 
     # Run ensemble training
@@ -178,14 +188,14 @@ def main():
             dataloader.X_train, dataloader.y_train, test_size=1-args.split,
             random_state=random_seed[ensemble]
         )
-        print(f'Split Training Set:\n'
-              f'* Train:\n'
+        print(f'Split Training Set:')
+        print(f'* Train:\n'
               f'    X: {len(X_train)}, {100 * round(len(X_train) / N, 2)} %\n'
-              f'    Y: {len(y_train)}, {100 * round(len(y_train) / N, 2)} %\n'
-              f'* Validation:\n'
+              f'    Y: {len(y_train)}, {100 * round(len(y_train) / N, 2)} %')
+        print(f'* Validation:\n'
               f'    X: {len(X_valid)}, {100 * round(len(X_valid) / N, 2)} %\n'
               f'    Y: {len(y_valid)}, {100 * round(len(y_valid) / N, 2)} %\n')
-        sys.exit()
+        # sys.exit()
 
         vocab_size = len(dataloader.char2idx)
         print("vocab size", vocab_size)
@@ -194,7 +204,7 @@ def main():
         print("Training samples:", num_samples, "Validation samples: ", num_valid_samples)
 
         run_name = "run-%d" % ensemble
-        print('--- Starting trial: %s' % run_name)
+        print(f'--- Starting trial: {run_name}\n')
 
         # Build the predictor model
         if args.model_type == 'lstm':
@@ -203,7 +213,7 @@ def main():
             dropout=0.25
             model = cleavenet.models.RNNPredictor(
                 vocab_size, embedding_dim, args.d_model, dropout,
-                args.regu, args.max_len, len(mmps), mask_zero=True
+                args.regu, args.max_len, len(enzCol), mask_zero=True
             )
             lr = args.learning_rate # 0.005
 
@@ -220,17 +230,18 @@ def main():
                 dff=args.d_model,  # dense params
                 vocab_size=vocab_size,
                 dropout_rate=dropout,
-                output_dim=len(mmps),
+                output_dim=len(enzCol),
                 pool_outputs=True,
                 mask_zero=True)
             lr = cleavenet.models.TransformerSchedule(args.d_model)
 
-        print("Learning rate", lr)
+        # print("Learning rate", lr)
 
         model_label='/'+args.model_type+'_'+str(ensemble)
 
         model.build((args.batch_size, None))
         model.summary()
+        print()
 
         optimizer = tf.optimizers.Adam(lr)
 
@@ -273,8 +284,9 @@ def main():
         )
         val_summary_writer = tf.summary.create_file_writer(val_log_dir)
 
-        for epoch in range(args.num_epochs):
-            print("Epoch ", epoch)
+        l = len(str(args.num_epochs))
+        for epoch in range(args.num_epochs + 1):
+            print(f'Epoch: {epoch} / {args.num_epochs}')
             pbar = tqdm(range(num_samples // args.batch_size))
             for iter in pbar:
                 # Grab a batch and train
@@ -295,9 +307,10 @@ def main():
                     tf.summary.scalar('loss', loss, step=global_step)
                     tf.summary.scalar('rmse', rmse, step=global_step)
 
+            print(2 * '\033[F\033[K', end='')  # Clear progress bar
             if epoch > 0:  # run validation every epoch
-                print("Running validation")
-                vbar = tqdm(range(len(X_valid) // args.batch_size))
+                # print("Running validation")
+                vbar = tqdm(range(math.ceil(len(X_valid) / args.batch_size)))
                 val_loss = []
                 val_rmse = []
                 for v_iter in vbar:
@@ -310,47 +323,61 @@ def main():
                     val_rmse.append(model.compute_rmse(yv, yv_hat)*args.batch_size) # compute val rmse
                 val_loss = np.sum(val_loss)/len(X_valid) # batch-averaged loss
                 val_rmse = np.sum(val_rmse)/len(X_valid)
+
                 # saving
                 with val_summary_writer.as_default():
                     tf.summary.scalar('loss', val_loss, step=epoch)
                     tf.summary.scalar('rmse', val_rmse, step=epoch)
 
                     # save weights only if validation loss decreases
-                    print("best val loss:", best_val_loss)
+                    # print("best val loss:", best_val_loss)
                     if val_loss < best_val_loss:
-                        print(f"Saving with val loss: {val_loss:.4f}")
-                        print(f"Val rmse: {val_rmse:.4f}")
+                        # print(f"Saving with val loss: {val_loss:.4f}")
+                        # print(f"Val rmse: {val_rmse:.4f}")
                         model.save_weights(os.path.join(
                             save_dir, "{}.weights.h5".format("model")))
                         best_val_loss = val_loss
 
                 ## run external validation
-                b_yv_hat = model(xExtValid, training=False)
-                b_yv_hat_condensed = tf.concat(
-                    [tf.expand_dims(b_yv_hat[:,index], axis=1) for index in bhatia_index],
+                ext_yv_hat = model(xExtValid, training=False)
+                ext_yv_hat_condensed = tf.concat(
+                    [tf.expand_dims(ext_yv_hat[:,index], axis=1) for index in enzIdx],
                     axis=1
                 )
-                b_val_loss = model.compute_loss(
-                    yExtValid[:, :len(bhatia_index)], b_yv_hat_condensed
+                ext_val_loss = model.compute_loss(
+                    yExtValid[:, :len(enzIdx)], ext_yv_hat_condensed
                 ) # compute loss
-                b_val_rmse = model.compute_rmse(
-                    yExtValid[:, :len(bhatia_index)], b_yv_hat_condensed
+                ext_val_rmse = model.compute_rmse(
+                    yExtValid[:, :len(enzIdx)], ext_yv_hat_condensed
                 )
-                print("External validation loss:", b_val_loss)
+                print(1 * '\033[F\033[K', end='')  # Clear progress bar
+
+                # Log data
+                if epoch % 5 == 0:
+                    print(
+                        f'Epoch: {epoch}{(l - len(str(epoch))) * " "} | '
+                        f'Best Loss: {best_val_loss:.3f} | '
+                        f'Loss: {val_loss:.3f} | '
+                        f'Val RMSE: {val_rmse:.3f} | '
+                        f'Ext Val loss: {ext_val_loss.numpy():.3f}'
+                    )
+                # print("External validation loss:", ext_val_loss)
                 # saving
                 with val_summary_writer.as_default():
-                    tf.summary.scalar('b-loss', b_val_loss, step=epoch)
-                    tf.summary.scalar('b-rmse', b_val_rmse, step=epoch)
+                    tf.summary.scalar('b-loss', ext_val_loss, step=epoch)
+                    tf.summary.scalar('b-rmse', ext_val_rmse, step=epoch)
 
                     # save weights only if validation loss decreases
-                    print("best val loss:", best_b_val_loss)
-                    if b_val_loss < best_b_val_loss:
-                        print(f"Saving with ext valid loss: {b_val_loss:.4f}")
-                        print(f"External valid rmse: {b_val_rmse}")
+                    # print("best val loss:", best_ext_val_loss)
+                    # sys.exit()
+                    if ext_val_loss < best_ext_val_loss:
+                        # print(f"Saving with ext valid loss: {ext_val_loss:.4f}")
+                        # print(f"External valid rmse: {ext_val_rmse}")
                         model.save_weights(os.path.join(
                             save_dir,
                             "{}.weights.h5".format(f"best-{dataset}-model")))
-                        best_b_val_loss = b_val_loss
+                        best_ext_val_loss = ext_val_loss
+            print()
 
         save_file = save_dir + '/best_loss.csv'
         with open(save_file, 'w') as f:
@@ -367,7 +394,7 @@ def main():
         if args.model_type == 'lstm':
             model = cleavenet.models.RNNPredictor(
                 vocab_size, embedding_dim, args.d_model,
-                dropout, args.regu, args.max_len, len(mmps)
+                dropout, args.regu, args.max_len, len(enzCol)
             )
         elif args.model_type == 'transformer':
             model = cleavenet.models.TransformerEncoder(
@@ -377,7 +404,7 @@ def main():
                 dff=args.d_model,  # dense params
                 vocab_size=vocab_size,
                 dropout_rate=dropout,
-                output_dim=len(mmps),
+                output_dim=len(enzCol),
                 pool_outputs=True
             )
 
@@ -393,7 +420,8 @@ def main():
         yt_hat = model(xt, training=False)  # forward pass
         embeddings = model.last_layer_embeddings
         test_rmse = model.compute_rmse(yt, yt_hat, axis=0)  # compute val rmse
-        print(test_rmse)
+        print(f'RMSE:\n{test_rmse}')
+        sys.exit()
 
         # Save embeddings for later
         np.save(
@@ -403,9 +431,9 @@ def main():
 
         # Plot results
         # Scatterplot of predicted vs true
-        plotter.plot_parity(yt, yt_hat, mmps, ensemble_dir)
+        plotter.plot_parity(yt, yt_hat, enzCol, ensemble_dir)
         # plot RMSE of all MMP families
-        plotter.plot_rmse(test_rmse, mmps, ensemble_dir)
+        plotter.plot_rmse(test_rmse, enzCol, ensemble_dir)
 
 if __name__ == "__main__":
     main()
