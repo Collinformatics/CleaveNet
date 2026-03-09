@@ -437,7 +437,10 @@ def main():
         yt_hat = model(xt, training=False)  # forward pass
         embeddings = model.last_layer_embeddings
         test_rmse = model.compute_rmse(yt, yt_hat, axis=0)  # compute val rmse
-        print(f'RMSE:\n* {test_rmse}\n')
+        print(f'RMSE:\n'
+              f'* {enzList}\n'
+              f'* {test_rmse}\n')
+        results[ensembleStr][' Enz'] = enzList
         results[ensembleStr]['RMSE'] = test_rmse
 
         # Save embeddings for later
@@ -453,11 +456,12 @@ def main():
         plotter.plot_rmse(test_rmse, enzCol, ensemble_dir)
 
     # Print results
+    print('Training Results:')
     for ens, data in results.items():
-        print(f'Ensemble: {ens}')
+        print(f'* Ensemble: {ens}')
         for k, v in data.items():
-            print(f'  {k}: {v}')
-        print()
+            print(f'    {k}: {v}')
+        # print()
 
 
 if __name__ == "__main__":
