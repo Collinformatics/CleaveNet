@@ -1,15 +1,13 @@
-import os
-
+import cleavenet.data
+from cleavenet import analysis, plotter
+from cleavenet.utils import mmps
 import numpy as np
+import os
+import sys
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.regularizers import L2
 
-import cleavenet.data
-from cleavenet import analysis, plotter
-from cleavenet.utils import mmps 
-
-import sys
 
 
 class TransformerSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
@@ -737,46 +735,45 @@ def load_generator_model(model_type, model_weights, training_scheme='uncondition
 	return model, checkpoint_path
 
 def load_predictor_model(model_type, checkpoint_path, batch_size, mask_zero=False):
-	d_model = 32
-	len_mmps = 18
+    print(f'Loading Weights: {checkpoint_path}\n')
+    d_model = 32
+    len_mmps = 18
 
-	if model_type == 'lstm':
-		embedding_dim = 22
-		dropout = 0.25
-		regu = 0.01
-		max_len = 10
-		vocab_size = 21  # did not train with CLS token
-		model = cleavenet.models.RNNPredictor(vocab_size, embedding_dim, d_model,
-		                                      dropout, regu, max_len, len_mmps, mask_zero=mask_zero)
+    if model_type == 'lstm':
+        embedding_dim = 22
+        dropout = 0.25
+        regu = 0.01
+        max_len = 10
+        vocab_size = 21  # did not train with CLS token
+        model = cleavenet.models.RNNPredictor(vocab_size, embedding_dim, d_model,
+                                          dropout, regu, max_len, len_mmps, mask_zero=mask_zero)
 
-	elif model_type == 'transformer':
-		d_model = 32
-		num_layers = 2
-		num_heads = 6
-		dropout = 0
-		vocab_size = 22
-		embedding_dim = 32
-		model = cleavenet.models.TransformerEncoder(
-		    num_layers=num_layers,
-		    d_model=embedding_dim, #d_model,
-		    num_heads=num_heads,
-		    dff=d_model,  # dense params
-		    vocab_size=vocab_size,
-		    dropout_rate=dropout,
-		    output_dim=len_mmps,
-		    pool_outputs=True,
-		    mask_zero=mask_zero)
+    elif model_type == 'transformer':
+        d_model = 32
+        num_layers = 2
+        num_heads = 6
+        dropout = 0
+        vocab_size = 22
+        embedding_dim = 32
+        model = cleavenet.models.TransformerEncoder(
+            num_layers=num_layers,
+            d_model=embedding_dim, #d_model,
+            num_heads=num_heads,
+            dff=d_model,  # dense params
+            vocab_size=vocab_size,
+            dropout_rate=dropout,
+            output_dim=len_mmps,
+            pool_outputs=True,
+            mask_zero=mask_zero)
 
-	fake_batch = np.array([[21, 20, 14, 8, 9, 13, 10 , 9 ,16, 17 , 3]])
-	model(fake_batch, training=False) # build model in TF
-	model.summary()
-	
-	print(f'\nPath: {checkpoint_path}\n')
-	import sys
-	sys.exit()
-	
-	model.load_weights(checkpoint_path)  # load weights
-	return model
+    fake_batch = np.array([[21, 20, 14, 8, 9, 13, 10 , 9 ,16, 17 , 3]])
+    model(fake_batch, training=False) # build model in TF
+    model.summary()
+
+    model.load_weights(checkpoint_path)  # load weights
+
+    sys.exit()
+    return model
 
 
 def inference(model, dataloader, causal=False, seq_len=10, penalty=1, verbose=False, conditioning_tag=None, temperature=1):
@@ -873,15 +870,18 @@ def prediction(dataPath, gen_data, generated_dir, dataset, model_weights,
         x_all = np.stack([np.append(np.array(cls_idx), s) for s in x_all])
     num_samples = len(gen_data)
     batch_size = num_samples
-    print(num_samples, gen_data[0])
+    print(f'Predicting {num_samples} substrates, ex: {gen_data[0]}')
     predictions = []
     for e_num, ensemble in enumerate(ensembles):
         print("Running", e_num, ensemble)
         print("EVALUATING SEQUENCES FROM", generated_dir)
-        checkpoint_path = os.path.join(checkpoint_dir, ensemble, model_weights)
+        checkpoint_path = os.path.join(
+            checkpoint_dir, ensemble, model_weights, 'model.weights.h5'
+        )
         # Build and load predictor model
-        model = cleavenet.models.load_predictor_model(model_type=predictor_model_type, checkpoint_path=checkpoint_path,
-                                                      batch_size=batch_size, mask_zero=True)
+        model = cleavenet.models.load_predictor_model(
+            model_type=predictor_model_type, checkpoint_path=checkpoint_path,
+            batch_size=batch_size, mask_zero=True)
         # Predict z-scores
         y_hat = model(x_all, training=False)  # forward pass
         if true_zscores is not None:

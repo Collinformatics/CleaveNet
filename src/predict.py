@@ -94,7 +94,8 @@ dataloader = cleavenet.data.DataLoader(
 
 k_pred_zscores, k_std_zscores = cleavenet.models.prediction(
 	data_path, eval_sequences, args.save_dir, dataset=dataset,
-	model_weights=args.model_weights_dir, checkpoint_dir='weights/',
+	model_weights=args.model_weights_dir, checkpoint_dir='save/',
 	predictor_model_type=args.model_architecture,
 	true_zscores=true_scores, trueEnz=enzymes
 )
+
