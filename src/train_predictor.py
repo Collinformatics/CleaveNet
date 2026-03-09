@@ -178,7 +178,7 @@ def main():
     print(f'External Validation:\n'
           f'  x: {len(xExtValid)}\n'
           f'  y: {len(yExtValid)}\n')
-    print(f'Enzyme Col: {enzCol}\nEnzyme List: {enzList}\nIdx: {enzIdx}\n')
+    # print(f'Enzyme Col: {enzCol}\nEnzyme List: {enzList}\nIdx: {enzIdx}\n')
     # sys.exit()
 
     # Run ensemble training
@@ -202,8 +202,8 @@ def main():
                   f'    Y: {len(y_train)}, {100 * round(len(y_train) / N, 2)} %')
             print(f'* Validation:\n'
                   f'    X: {len(X_valid)}, {100 * round(len(X_valid) / N, 2)} %\n'
-                  f'    Y: {len(y_valid)}, {100 * round(len(y_valid) / N, 2)} %\n')
-            print("vocab size", vocab_size)
+                  f'    Y: {len(y_valid)}, {100 * round(len(y_valid) / N, 2)} %')
+            print(f'vocab size: {vocab_size}\n')
         print("Training samples:", num_samples, "Validation samples: ", num_valid_samples)
 
         run_name = "run-%d" % ensemble
@@ -386,12 +386,6 @@ def main():
                         )
                         model.save_weights(best_val_loss_path)
                         best_extVal_loss = extVal_loss
-        # print(f'Ensemble: {ensemble}\n'
-        #       f'* Best Loss: {best_val_loss:.3f}\n'
-        #       f'  Save: {best_val_loss_path}\n'
-        #       f'* Best ExtVal Loss: {best_extVal_loss:.3f}\n'
-        #       f'  Save: {best_extVal_loss_path}\n') ##
-
         save_file = save_dir + '/best_loss.csv'
         with open(save_file, 'w') as f:
             f.write(str(best_val_loss))
@@ -461,7 +455,7 @@ def main():
         print(f'* Ensemble: {ens}')
         for k, v in data.items():
             print(f'    {k}: {v}')
-        # print()
+        print()
 
 
 if __name__ == "__main__":
