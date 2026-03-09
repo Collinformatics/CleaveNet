@@ -12,8 +12,9 @@ parser.add_argument(
 	help="'transformer' or 'lstm, for most use cases the default should be used'"
 )
 parser.add_argument(
-"--model-weights", type=str, default=None,
-	help="'transformer' or 'lstm, for most use cases the default should be used'"
+"--model-weights-dir", type=str, default=None,
+	help="Directory with the date and index where \"model.weights.h5\" are found. "
+		 "Ex: save/transformer_N/<model-weights-dir>/model.weights.h5"
 )
 parser.add_argument(
 	"--no-csv-header", action='store_true',
@@ -38,8 +39,13 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
+# Format weights dir
+if 'PREDICTOR' not in args.model_weights_dir:
+	args.model_weights_dir += '_PREDICTOR'
+
+# Make dir
 if not os.path.exists(args.save_dir):
-    os.makedirs(args.save_dir, exist_ok=True)
+	os.makedirs(args.save_dir, exist_ok=True)
 
 # Define column names
 dataset = None
@@ -88,7 +94,7 @@ dataloader = cleavenet.data.DataLoader(
 
 k_pred_zscores, k_std_zscores = cleavenet.models.prediction(
 	data_path, eval_sequences, args.save_dir, dataset=dataset,
-	model_weights=args.model_weights, checkpoint_dir='weights/',
+	model_weights=args.model_weights_dir, checkpoint_dir='weights/',
 	predictor_model_type=args.model_architecture,
 	true_zscores=true_scores, trueEnz=enzymes
 )
