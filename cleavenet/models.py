@@ -744,7 +744,7 @@ def load_predictor_model(model_type, checkpoint_path, batch_size, mask_zero=Fals
         dropout = 0.25
         regu = 0.01
         max_len = 10
-        vocab_size = 21  # did not train with CLS token
+        vocab_size = 22  # did not train with (vocab_size = 21) CLS token
         model = cleavenet.models.RNNPredictor(vocab_size, embedding_dim, d_model,
                                           dropout, regu, max_len, len_mmps, mask_zero=mask_zero)
 
