@@ -293,9 +293,11 @@ def main():
 			pathModelLoss = os.path.join(dirModels, f'{tag}_loss.txt')
 			break
 		idx += 1
+	pathTrainingLog = pathFullModel.replace('.keras', '_trainingLog.csv')
 
 	#print(f'Saving model params at: {pathModelLoss}')
 	print(f'\nSaving the trained model at:\n  {pathFullModel}\n')
+	# print(f'Saving the training log at:\n  {pathFullModel}\n')
 	
 	# Train generator
 	data = pd.DataFrame(0.0, index=[], columns=['loss', 'valid acc'])
@@ -382,6 +384,7 @@ def main():
 
 				data.loc[epoch, 'loss'] = val_loss
 				data.loc[epoch, 'valid acc'] = val_acc
+				data.to_csv(pathTrainingLog, index=True)
 
 			# Save model if validation loss decreases
 			if val_loss < best_val_loss:
@@ -399,16 +402,15 @@ def main():
 	timeEnd = time.time()
 	timeTrain = ((timeEnd - timeStart) / 60) / 60 # convert to hr
 	timeItr = args.num_epochs / timeTrain
-	pathSave = pathFullModel.replace('.keras', '_trainingLog.csv')
 	print(f'\nModel saved at:\n  {pathFullModel}')
 	print(f'Summary:\n  {pathModelLoss}')
-	print(f'Training Log:\n  {pathSave}')
+	print(f'Training Log:\n  {pathTrainingLog}')
 	print(f'Training Time: {timeTrain:.2f}hr, {timeItr:.2f}epoch/hr')
 	print(f'Loss: {float(best_val_loss)}\n')
 	save_file = save_dir + '/best_loss.csv'
 	with open(save_file, 'w') as f:
 		f.write(str(best_val_loss) + '\n')
-	data.to_csv(pathSave, index=True)
+	data.to_csv(pathTrainingLog, index=True)
 
 
 

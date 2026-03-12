@@ -1,6 +1,5 @@
 import argparse
 import cleavenet
-from cleavenet.utils import get_data_dir
 import os
 import pandas as pd
 import sys
