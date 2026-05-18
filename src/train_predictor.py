@@ -31,8 +31,8 @@ parser.add_argument(
 	help="File path for the training data"
 )
 parser.add_argument(
-	"--data-pathEV", default="Mpro2_ZPred_6AA_ExtValid_MinCounts10.csv", type=str,
-	help="File path for the External Validation (EV) data"
+	"--data-pathEV", default="Mpro2_ZPred_6AA_ExtValid_MinCounts10.csv",
+    type=str, help="File path for the External Validation (EV) data"
 )
 parser.add_argument(
     "--d-model", default=32, type=int,
@@ -204,7 +204,8 @@ def main():
                   f'    X: {len(X_valid)}, {100 * round(len(X_valid) / N, 2)} %\n'
                   f'    Y: {len(y_valid)}, {100 * round(len(y_valid) / N, 2)} %')
             print(f'vocab size: {vocab_size}\n')
-        print("Training samples:", num_samples, "Validation samples: ", num_valid_samples)
+        print(f'Training samples: {num_samples:,}, '
+              f'Validation samples: {num_valid_samples:,}')
 
         run_name = "run-%d" % ensemble
         print(f'--- Starting trial: {run_name}\n')

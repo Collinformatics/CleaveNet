@@ -159,8 +159,9 @@ idx = 0
 tag = dataset.replace(" - ", " ").replace(" ", "_")
 while True:
 	save_file = os.path.join(
-		args.output_dir, f'generatedSubs_{idx}-{tag}-{condition}-penalty_' +
-		str(args.repeat_penalty) + '-temp_' + str(args.temperature) + '.csv'
+		args.output_dir, f'generatedSubs_{idx}-{tag}-N_{args.num_seqs}-'
+						 f'{condition}-penalty_{args.repeat_penalty}_'
+						 f'temp-{args.temperature}.csv'
 	)
 	if not os.path.exists(save_file):
 		break
@@ -169,6 +170,6 @@ print(f'\nSequences saved at:\n  {save_file}\n')
 with open(save_file, 'a') as f:
 	for seq in untokenized_seqs:
 		f.write(f'{seq}\n')
-	f.write('\nModel:\n')
-	f.write(f'{args.model}')
+	# f.write('\nModel:\n')
+	# f.write(f'{args.model}')
        
