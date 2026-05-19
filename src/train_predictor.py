@@ -31,8 +31,7 @@ parser.add_argument(
 	help="File path for the training data"
 )
 parser.add_argument(
-	"--data-pathEV",
-    default="Mpro2_CountsNorm_ExtValid_Q@R4_8AA_MinCounts10000.csv",
+	"--data-pathEV", default="",
     type=str, help="File path for the External Validation (EV) data"
 )
 parser.add_argument(
@@ -145,6 +144,8 @@ def main():
             cls_idx = dataloader.char2idx[dataloader.CLS]
             xExtValid = np.stack([np.append(np.array(cls_idx), s) for s in xExtValid])
         yExtValid = dataloaderEV.y
+        numValid = len(xExtValid)
+        N = len(dataloader.y)
     else:
         enzCol = [dataset.split('_')[0]]
         enzList = enzCol
@@ -155,30 +156,53 @@ def main():
             model=args.model_type, test_split=0.2,
             dataset=dataset
         )
-        # Load external validation dataset
-        dataloaderEV = cleavenet.data.DataLoader(
-            data_pathEV, seed=0, task='regression',
-            model=args.model_type, test_split=0,
-            dataset=datasetEV, use_dataloader=dataloader
-        )
-        # sys.exit()
-        xExtValid = cleavenet.data.tokenize_sequences(dataloaderEV.X, dataloader)
+        if args.data_pathEV:
+            # Load external validation dataset
+            dataloaderEV = cleavenet.data.DataLoader(
+                data_pathEV, seed=0, task='regression',
+                model=args.model_type, test_split=0,
+                dataset=datasetEV, use_dataloader=dataloader
+            )
+            xExtValid = cleavenet.data.tokenize_sequences(dataloaderEV.X, dataloader)
+            yExtValid = dataloaderEV.y
+        else:
+            # Split N samples off as external validation
+            xDataloader, xExtValid, yDataloader, yExtValid = train_test_split(
+                dataloader.X, dataloader.y,
+                test_size=0.05, # 5 % used for external validation
+                random_state=0
+            )
+            xExtValid = cleavenet.data.tokenize_sequences(xExtValid, dataloader)
+
+            # Redefine dataloader without the extValidation subs
+            dataloader.X = xDataloader
+            dataloader.y = yDataloader
+            (dataloader.X_train, dataloader.X_test,
+             dataloader.y_train, dataloader.y_test) = train_test_split(
+                xDataloader, yDataloader, test_size=dataloader.test_split,
+                random_state=dataloader.seed
+            )
+
         if args.model_type == 'transformer':
             cls_idx = dataloader.char2idx[dataloader.CLS]
             xExtValid = np.stack([np.append(np.array(cls_idx), s) for s in xExtValid])
-        yExtValid = dataloaderEV.y
-
-
-    N = len(dataloader.y)
-    Ntest = len(dataloader.y_test)
-    Ntrain = len(dataloader.X_train)
-    print(f'\nDataLoader: N={N:,}\n'
-          f' y_train: {Ntrain:,}, {100 * round(Ntrain / N, 2)} %\n'
-          f'  y_test: {Ntest:,}, {100 * round(Ntest / N, 2)} %\n')
-
-    print(f'External Validation:\n'
-          f'  x: {len(xExtValid)}\n'
-          f'  y: {len(yExtValid)}\n')
+    
+    # Dataset info
+    numValid = len(xExtValid)
+    numTest = len(dataloader.y_test)
+    numTrain = len(dataloader.X_train)
+    if args.data_pathEV:
+        N = len(dataloader.y)
+        print(f'\nDataLoader: N={N:,}\n'
+              f' Training: {numTrain:,}, {100 * round(numTrain / N, 2)} %\n'
+              f'  Testing: {numTest:,}, {100 * round(numTest / N, 2)} %\n'
+              f'  Ext Val: {numValid:,}\n')
+    else:
+        N = len(dataloader.y) + numValid
+        print(f'\nDataLoader: N={N:,}\n'
+              f'  Training: {numTrain:,}, {100 * round(numTrain / N, 2)} %\n'
+              f'   Testing: {numTest:,}, {100 * round(numTest / N, 2)} %\n'
+              f' Ext Valid: {numValid:,}, {100 * round(numValid / N, 2)} %\n')
     # print(f'Enzyme Col: {enzCol}\nEnzyme List: {enzList}\nIdx: {enzIdx}\n')
     # sys.exit()
 
@@ -239,7 +263,7 @@ def main():
                 mask_zero=True)
             lr = cleavenet.models.TransformerSchedule(args.d_model)
         else:
-            print(f'ERROR: Invalid Model: {args.model_type}')
+            print(f'ERROR: InumValid Model: {args.model_type}')
             sys.exit(1)
         model_label='/'+args.model_type+'_'+str(ensemble)
         model.build((args.batch_size, None))
@@ -440,8 +464,13 @@ def main():
     print('Training Results:')
     for ens, data in results.items():
         print(f'* Ensemble: {ens}')
-        for k, v in data.items():
-            print(f'    {k}: {v}')
+
+        for i in range(data[' Enz']):
+            print(f"* {data[' Enz'][i]}: {data['RMSE'][i]}")
+
+
+        # for k, v in data.items():
+        #     print(f'    {k}: {v}')
         print()
 
 
