@@ -2,8 +2,8 @@ import os
 
 enz = 'Mpro2'
 seqs = [
-    'AVLQSGFR', 'VILQSGFR', 'VILQSPFR', 'VILHSGFR', 'VIMQSGFR',
-    'VPLQSGFR', 'NILQSGFR', 'VILQTGFR', 'PILQSGFR', 'PIMQSGFR'
+    'AVLQSGFR', 'VILQSGFR', 'VILQTGFR', 'VILQSPFR',
+    'VILHSGFR', 'VIMQSGFR', 'VPLQSGFR', 'NILQSGFR',
 ]
 
 saveDir  = os.path.join('../splits', 'predict')

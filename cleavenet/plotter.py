@@ -1,8 +1,9 @@
-import os
-
 import logomaker
+import matplotlib
+matplotlib.use('Agg')  # non-interactive backend, renders to file only (use before pyplot & sns)
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 import pandas as pd
 import scipy
 from scipy import stats
@@ -12,15 +13,16 @@ from sklearn.metrics import confusion_matrix
 from cleavenet import analysis
 
 
-def plot_parity(labels, predicted, mmps, save_path, nrows=6, ncols=3):
+
+def plot_parity(labels, predicted, enzymes, save_path, nrows=6, ncols=3):
     """ Plot scatterplot of true vs. predicted z-scores and save .png
         Args:
         labels (np.array): true z-scores
         predicted (np.array): predicted z-scores
-        mmp (list) : list of all mmps
+        enzymes (list) : list of all enzymes
         save_path (str): saving path
     """
-    for i in range(len(mmps)):
+    for i in range(len(enzymes)):
         data = pd.DataFrame({'True': labels[:,i], 'Predicted': predicted[:,i]})
         p = sns.jointplot(data=data, x='True', y='Predicted', kind='reg') #, xlim=(-2, 5), ylim=(-2, 5))
         #corr_pear = data.corr(method='pearson')
@@ -28,10 +30,11 @@ def plot_parity(labels, predicted, mmps, save_path, nrows=6, ncols=3):
         label = " $R$=%.2f" % (r_squared)
         #ax.text(0.05, 0.95, label, transform=ax.transAxes, fontsize=14,
         #        verticalalignment='top')
-        p.fig.suptitle(mmps[i]+label, weight='bold') #+' R\N{SUPERSCRIPT TWO}=%.2f' % corr_pear.iloc[0, 1])
+        p.fig.suptitle(enzymes[i]+label, weight='bold') #+' R\N{SUPERSCRIPT TWO}=%.2f' % corr_pear.iloc[0, 1])
         p.fig.tight_layout()
-        save_dir_test = os.path.join(save_path, mmps[i]+'_true_pred_scatter.svg')
-        p.savefig(save_dir_test)
+        # save_dir_test = os.path.join(save_path, enzymes[i]+'_true_pred_scatter.svg')
+        save_dir_test = os.path.join(save_path, enzymes[i] + '_true_pred_scatter.png')
+        p.savefig(save_dir_test, dpi=300)
 
 
 def plot_rmse(rmse, mmps, save_path):

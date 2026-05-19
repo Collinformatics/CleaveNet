@@ -238,18 +238,15 @@ def main():
                 pool_outputs=True,
                 mask_zero=True)
             lr = cleavenet.models.TransformerSchedule(args.d_model)
-
-        # print("Learning rate", lr)
-
+        else:
+            print(f'ERROR: Invalid Model: {args.model_type}')
+            sys.exit(1)
         model_label='/'+args.model_type+'_'+str(ensemble)
-
         model.build((args.batch_size, None))
         model.summary()
         print()
 
         optimizer = tf.optimizers.Adam(lr)
-
-        # sys.exit()
 
         @tf.function  # comment out for eager execution (if you want to debug)
         def train_step(x, y):
@@ -319,7 +316,7 @@ def main():
                     tf.summary.scalar('loss', loss, step=global_step)
                     tf.summary.scalar('rmse', rmse, step=global_step)
 
-            print(2 * '\033[F\033[K', end='')  # Clear progress bar
+            print('\033[F\033[K', end='')  # Clear progress bar
             if epoch > 0:  # run validation every epoch
                 # print("Running validation")
                 vbar = tqdm(range(math.ceil(len(X_valid) / args.batch_size)))
@@ -346,10 +343,9 @@ def main():
                     if val_loss < best_val_loss:
                         # print(f"Saving with val loss: {val_loss:.4f}")
                         # print(f"Val rmse: {val_rmse:.4f}")
-                        best_val_loss_path = os.path.join(
-                            save_dir, "{}.weights.h5".format("model")
-                        )
-                        model.save_weights(best_val_loss_path)
+                        savePath = os.path.join(save_dir, 'model.keras')
+                        # model.save_weights(best_val_loss_path)
+                        model.save(savePath)
                         best_val_loss = val_loss
 
                 ## run external validation
@@ -364,7 +360,7 @@ def main():
                 extVal_rmse = model.compute_rmse(
                     yExtValid[:, :len(enzIdx)], ext_yv_hat_condensed
                 )
-                print(1 * '\033[F\033[K', end='')  # Clear progress bar
+                print(2 * '\033[F\033[K', end='')  # Clear progress bar
 
                 # Log data
                 if epoch % 5 == 0:
@@ -389,10 +385,13 @@ def main():
                         # print(f"External valid rmse: {extVal_rmse}")
                         best_extVal_loss_path = os.path.join(
                             save_dir,
-                            "{}.weights.h5".format(f"best-{dataset}-model")
+                            "{}.keras".format(f"best-{dataset}-model")
                         )
-                        model.save_weights(best_val_loss_path)
+                        model.save(best_extVal_loss_path)
                         best_extVal_loss = extVal_loss
+            else:
+                print('\033[F\033[K', end='')  # Clear progress bar
+        print()
         save_file = save_dir + '/best_loss.csv'
         with open(save_file, 'w') as f:
             f.write(str(best_val_loss))
@@ -403,33 +402,14 @@ def main():
         # using load model here so we can use the best checkpoint
         ensembleStr = str(ensemble)
         ensemble_dir = save_dir
-        checkpoint_path_final = os.path.join(ensemble_dir, "model.weights.h5")
+        checkpoint_path_final = os.path.join(ensemble_dir, "model.keras")
         results[ensembleStr] = {}
-        results[ensembleStr]['Weights'] = checkpoint_path_final
+        results[ensembleStr]['Model'] = checkpoint_path_final
 
-        # Re-build the predictor model
-        if args.model_type == 'lstm':
-            model = cleavenet.models.RNNPredictor(
-                vocab_size, embedding_dim, args.d_model,
-                dropout, args.regu, args.max_len, len(enzCol)
-            )
-        elif args.model_type == 'transformer':
-            model = cleavenet.models.TransformerEncoder(
-                num_layers=num_layers,
-                d_model=embedding_dim,
-                num_heads=num_heads,
-                dff=args.d_model,  # dense params
-                vocab_size=vocab_size,
-                dropout_rate=dropout,
-                output_dim=len(enzCol),
-                pool_outputs=True
-            )
-
-        model.build((len(dataloader.X_test), None))
-        model.summary()
-        model.load_weights(checkpoint_path_final)  # load weights from best checkpoint
-        print(f'Loaded Weights: {checkpoint_path_final}')
-
+        # Load the predictor model
+        model = cleavenet.models.loadPredictor(
+            model_type=args.model_type, path=checkpoint_path_final
+        )
 
         xt, yt = cleavenet.data.get_batch(
             dataloader.X_test, dataloader.y_test, len(dataloader.X_test), dataloader,
@@ -438,7 +418,7 @@ def main():
         yt_hat = model(xt, training=False)  # forward pass
         embeddings = model.last_layer_embeddings
         test_rmse = model.compute_rmse(yt, yt_hat, axis=0)  # compute val rmse
-        print(f'RMSE:\n'
+        print(f'\nRMSE:\n'
               f'* {enzList}\n'
               f'* {test_rmse}\n')
         results[ensembleStr][' Enz'] = enzList
@@ -453,7 +433,7 @@ def main():
         # Plot results
         # Scatterplot of predicted vs true
         plotter.plot_parity(yt, yt_hat, enzCol, ensemble_dir)
-        # plot RMSE of all MMP families
+        # plot RMSE of all enzymes (columns)
         plotter.plot_rmse(test_rmse, enzCol, ensemble_dir)
 
     # Print results

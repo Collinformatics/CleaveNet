@@ -55,17 +55,17 @@ class PositionalEmbedding(tf.keras.layers.Layer):
 		self.pos_encoding = positional_encoding(length=max_seq_length, depth=d_model)
 		self.label = label
 		self.start_idx = start_idx
-		if label: 
+		if label:
 			self.label_embedding = tf.keras.layers.Dense(d_model)
 
 	def call(self, x):
 		if self.label:
 			#print(f'X:\n{x}\n')
-			x, label = x 
+			x, label = x
 			label_emb = []
 			#print("label", label)
 			for i in range(len(label)):
-				if label[i][0] == self.start_idx: # if start token 
+				if label[i][0] == self.start_idx: # if start token
 					label_emb_temp = self.embedding(label[i])
 				else:
 					label_emb_temp = self.label_embedding(tf.expand_dims(label[i], 0))
@@ -273,7 +273,7 @@ class TransformerDecoder(tf.keras.Model):
 			"dropout_rate": self.dropout.rate,
 		})
 		return config
-	
+
 	def call(self, x):
 		x = self.decoder(x) # (batch_size, target_len, d_model)
 		logits = self.final_layer(x)  # (batch_size, target_len, target_vocab_size)
@@ -315,7 +315,7 @@ class ConditionalTransformerDecoder(tf.keras.Model):
 		self.last_attn_scores = None
 		self.dropout = tf.keras.layers.Dropout(dropout_rate)
 		self.final_layer = tf.keras.layers.Dense(vocab_size) #, name="final_layer"
-	
+
 	def get_config(self):
 		config = super().get_config()
 		config.update({
@@ -326,7 +326,7 @@ class ConditionalTransformerDecoder(tf.keras.Model):
 			"vocab_size": self.vocab_size,
 			"dropout_rate": self.dropout.rate,
 		})
-		return config	
+		return config
 
 	# def build(self, input_shape): # Don't use with new TF
 	#     self.pos_embedding.build(input_shape)
@@ -360,92 +360,102 @@ class ConditionalTransformerDecoder(tf.keras.Model):
 
 
 class TransformerEncoder(tf.keras.Model):
-	"Transformer; Encoder-only model for BERT MLM"
-	def __init__(self, *, num_layers, d_model, num_heads, dff, vocab_size, dropout_rate=0.1, output_dim=None, pool_outputs=False, mask_zero=False):
-		super().__init__()
-		if output_dim == None:
-			output_dim=vocab_size
-		self.d_model = d_model
-		self.dff = dff
-		self.num_layers = num_layers
-		self.vocab_size = vocab_size
-		self.pool_outputs = pool_outputs
-		self.encoder = Encoder(
-			num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff, 
-			vocab_size=vocab_size, dropout_rate=dropout_rate, mask_zero=mask_zero
-		)
-		self.dropout = tf.keras.layers.Dropout(dropout_rate)
-		self.final_layer = tf.keras.layers.Dense(output_dim)
+    "Transformer; Encoder-only model for BERT MLM"
+    def __init__(self, *, num_layers, d_model, num_heads, dff, vocab_size, dropout_rate
+    =0.1, output_dim=None, pool_outputs=False, mask_zero=False,
+                 **kwargs):
+        super().__init__(**kwargs)
+        if output_dim == None:
+            output_dim=vocab_size
+        self.d_model = d_model
+        self.dff = dff
+        self.num_layers = num_layers
+        self.vocab_size = vocab_size
+        self.num_heads = num_heads
+        self.dropout_rate = dropout_rate
+        self.output_dim = output_dim
+        self.pool_outputs = pool_outputs
+        self.mask_zero = mask_zero
 
-	def get_config(self):
-		config = super().get_config()
-		config.update({
-			"num_layers": self.num_layers,
-			"d_model": self.d_model,
-			"num_heads": self.num_heads,
-			"dff": self.dff,
-			"vocab_size": self.vocab_size,
-			"dropout_rate": self.dropout.rate,
-		})
-		return config
-    
-	def call(self, x, training=None):
-		x = self.encoder(x, training=training)  # (batch_size, target_len, d_model)
-		x = self.dropout(x, training=training)
-		self.last_layer_embeddings = x
-		if self.pool_outputs:
-		    x = tf.squeeze(x[:, 0:1, :], axis=1) # (batch_size, 1, output) , using for regression task (pool outputs by taking representation of first token)
-		logits = self.final_layer(x)  # (batch_size, target_len, target_vocab_size)
-		return logits
+        self.encoder = Encoder(
+            num_layers=num_layers, d_model=d_model, num_heads=num_heads, dff=dff,
+            vocab_size=vocab_size, dropout_rate=dropout_rate, mask_zero=mask_zero
+        )
+        self.dropout = tf.keras.layers.Dropout(dropout_rate)
+        self.final_layer = tf.keras.layers.Dense(output_dim)
 
-	def compute_masked_loss(self, y, y_hat, mask):
-		""" Computes loss between true y and prediction over masked locations"""
-		# Select masked locations
-		y_masked = tf.boolean_mask(y, mask)
-		y_hat_masked = tf.boolean_mask(y_hat, mask)
-		loss = tf.keras.losses.sparse_categorical_crossentropy(y_masked, y_hat_masked, from_logits=True)
-		return tf.reduce_mean(loss)
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            "num_layers": self.num_layers,
+            "d_model": self.d_model,
+            "num_heads": self.num_heads,
+            "dff": self.dff,
+            "vocab_size": self.vocab_size,
+            "dropout_rate": self.dropout_rate,
+            "output_dim": self.output_dim,
+            "pool_outputs": self.pool_outputs,
+            "mask_zero": self.mask_zero,
+        })
+        return config
 
-	def compute_masked_accuracy(self, y, y_hat, mask):
-		m = tf.keras.metrics.CategoricalAccuracy()
-		# Compute accuracy over masked tokens
-		y_onehot = tf.one_hot(y, depth=self.vocab_size)
-		y_masked = tf.boolean_mask(y_onehot, mask)
-		y_hat_masked = tf.boolean_mask(y_hat, mask)
+    def call(self, x, training=None):
+        x = self.encoder(x, training=training)  # (batch_size, target_len, d_model)
+        x = self.dropout(x, training=training)
+        self.last_layer_embeddings = x
+        if self.pool_outputs:
+            x = tf.squeeze(x[:, 0:1, :], axis=1) # (batch_size, 1, output) , using for regression task (pool outputs by taking representation of first token)
+        logits = self.final_layer(x)  # (batch_size, target_len, target_vocab_size)
+        return logits
 
-		# Compute accuracy
-		m.update_state(y_masked, y_hat_masked)
-		accuracy = m.result()
-		return accuracy
+    def compute_masked_loss(self, y, y_hat, mask):
+        """ Computes loss between true y and prediction over masked locations"""
+        # Select masked locations
+        y_masked = tf.boolean_mask(y, mask)
+        y_hat_masked = tf.boolean_mask(y_hat, mask)
+        loss = tf.keras.losses.sparse_categorical_crossentropy(y_masked, y_hat_masked, from_logits=True)
+        return tf.reduce_mean(loss)
 
-	def compute_loss(self, y, y_hat):
-		""" Computes loss, as mean absolute error, between true y and prediction.
+    def compute_masked_accuracy(self, y, y_hat, mask):
+        m = tf.keras.metrics.CategoricalAccuracy()
+        # Compute accuracy over masked tokens
+        y_onehot = tf.one_hot(y, depth=self.vocab_size)
+        y_masked = tf.boolean_mask(y_onehot, mask)
+        y_hat_masked = tf.boolean_mask(y_hat, mask)
 
-		Args:
-		    y: true labels
-		    y_hat: output prediction
+        # Compute accuracy
+        m.update_state(y_masked, y_hat_masked)
+        accuracy = m.result()
+        return accuracy
 
-		Returns:
-		    absolute error
-		"""
-		y_hat = y_hat # batch, last, 1
-		y_hat = tf.cast(y_hat, tf.float64)
-		error = tf.abs(y - y_hat)
-		return tf.reduce_mean(error)
+    def compute_loss(self, y, y_hat):
+        """ Computes loss, as mean absolute error, between true y and prediction.
 
-	def compute_rmse(self, y, y_hat, axis=None):
-		"""Computes the root mean squared error between true y and prediction.
+        Args:
+            y: true labels
+            y_hat: output prediction
 
-		Args:
-		    y: true labels
-		    y_hat: output prediction
+        Returns:
+            absolute error
+        """
+        y_hat = y_hat # batch, last, 1
+        y_hat = tf.cast(y_hat, tf.float64)
+        error = tf.abs(y - y_hat)
+        return tf.reduce_mean(error)
 
-		Returns:
-		    mse
-		"""
-		y_hat = y_hat
-		error = (y - y_hat) ** 2
-		return tf.sqrt(tf.reduce_mean(error, axis=axis))
+    def compute_rmse(self, y, y_hat, axis=None):
+        """Computes the root mean squared error between true y and prediction.
+
+        Args:
+            y: true labels
+            y_hat: output prediction
+
+        Returns:
+            mse
+        """
+        y_hat = y_hat
+        error = (y - y_hat) ** 2
+        return tf.sqrt(tf.reduce_mean(error, axis=axis))
 
 
 ### LSTM PREDICTOR ###
@@ -453,8 +463,18 @@ class RNNPredictor(tf.keras.Model):
     """ Predictor class to predict the specificity of peptide substrates."""
 
     def __init__(self, vocab_size, embedding_dim, rnn_units,
-                 p, regu, max_len, output_len, mask_zero=False, training=True):
-        super(RNNPredictor, self).__init__()
+                 p, regu, max_len, output_len, mask_zero=False, training=True,
+                 **kwargs):
+        super(RNNPredictor, self).__init__(**kwargs)
+        self.vocab_size = vocab_size
+        self.embedding_dim = embedding_dim
+        self.rnn_units = rnn_units
+        self.p = p
+        self.regu = regu
+        self.max_len = max_len
+        self.output_len = output_len
+        self.mask_zero = mask_zero
+
         self.training = training
 
         self.embedding = tf.keras.layers.Embedding(
@@ -475,6 +495,20 @@ class RNNPredictor(tf.keras.Model):
 
         self.dense = tf.keras.layers.Dense(2 * rnn_units, activation='relu')
         self.dense_out = tf.keras.layers.Dense(output_len)
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            "vocab_size": self.vocab_size,
+            "embedding_dim": self.embedding_dim,
+            "rnn_units": self.rnn_units,
+            "p": self.p,
+            "regu": self.regu,
+            "max_len": self.max_len,
+            "output_len": self.output_len,
+            "mask_zero": self.mask_zero,
+        })
+        return config
 
     def call(self, x):
         """ Forward pass through the model.
@@ -627,14 +661,14 @@ class AutoregressiveRNN(tf.keras.Model):
 
 
 def load_model(pathModel, seqLen, model_type=None, training_scheme='rounded'): #$
-    if not pathModel.endswith('.keras'):
-        pathModel += '.keras'
-    if not pathModel.startswith('models/'):
-        pathModel = os.path.join('models', pathModel)
+    # if not pathModel.endswith('.keras'):
+    #     pathModel += '.keras'
+    # if not pathModel.startswith('models/'):
+    #     pathModel = os.path.join('models', pathModel)
     print(f'\nLoading Model: {pathModel}')
 
     # Print model info
-    pathParams = pathModel.replace('.keras', '_loss.txt')
+    pathParams = pathModel.replace('.weights.h5', '_loss.txt').replace('.keras', '_loss.txt')
     if os.path.exists(pathParams):
         print('Model Params:')
         with open(pathParams, 'r') as f:
@@ -675,11 +709,12 @@ def load_generator_model(model_type, model_weights, training_scheme='uncondition
 		#dropout = 0
 		dropout = 0.25
 		d_model = 64
+
 		if training_scheme == 'unconditional':
 		    checkpoint_path = os.path.join(parent_dir+"weights/AUTOREG_transformer/unconditional/", model_weights)
 		elif training_scheme == 'conditional':
 		    num_layers=3
-		    
+
 		    checkpoint_path = os.path.join(parent_dir+"weights/AUTOREG_transformer/conditional/", model_weights)
 		elif training_scheme == 'both':
 		    num_layers=3
@@ -723,7 +758,7 @@ def load_generator_model(model_type, model_weights, training_scheme='uncondition
 		model = AutoregressiveRNN(batch_size, vocab_size, d_embed, d_model, dropout,
 		                                           regu, seq_len, training=False, mask_zero=False, num_layers=num_layers)
 		checkpoint_path = os.path.join("weights/AUTOREG_lstm/20231016-133250_GEN/", model_weights)
-	
+
 	print(f'\nModel Type: {model_type}\n'
 		  f'    Scheme: {training_scheme}')
 	print(f'Loading Model Weights: {checkpoint_path}')
@@ -731,23 +766,25 @@ def load_generator_model(model_type, model_weights, training_scheme='uncondition
 	if training_scheme == 'unconditional':
 		model.summary()
 		model.load_weights(checkpoint_path)
-	
+
 	return model, checkpoint_path
 
 def load_predictor_model(model_type, checkpoint_path, batch_size, mask_zero=False):
-    print(f'Loading Weights: {checkpoint_path}\n')
+    print(f'Loading Weights: {checkpoint_path}\n\n')
     d_model = 32
     len_mmps = 18
 
+    print(f'Loading Model: {model_type}')
     if model_type == 'lstm':
         embedding_dim = 22
         dropout = 0.25
         regu = 0.01
         max_len = 10
         vocab_size = 22  # did not train with (vocab_size = 21) CLS token
-        model = cleavenet.models.RNNPredictor(vocab_size, embedding_dim, d_model,
-                                          dropout, regu, max_len, len_mmps, mask_zero=mask_zero)
-
+        model = cleavenet.models.RNNPredictor(
+            vocab_size, embedding_dim, d_model, dropout,
+            regu, max_len, len_mmps, mask_zero=mask_zero
+        )
     elif model_type == 'transformer':
         d_model = 32
         num_layers = 2
@@ -755,6 +792,12 @@ def load_predictor_model(model_type, checkpoint_path, batch_size, mask_zero=Fals
         dropout = 0
         vocab_size = 22
         embedding_dim = 32
+
+        num_layers = 4
+        num_heads = 8
+        dropout = 0.01
+        embedding_dim = 128
+
         model = cleavenet.models.TransformerEncoder(
             num_layers=num_layers,
             d_model=embedding_dim, #d_model,
@@ -770,9 +813,30 @@ def load_predictor_model(model_type, checkpoint_path, batch_size, mask_zero=Fals
     model(fake_batch, training=False) # build model in TF
     model.summary()
 
-    model.load_weights(checkpoint_path)  # load weights
+    # model.load_weights(checkpoint_path)  # load weights
+    # model = tf.keras.models.load_model(checkpoint_path)
+    print(f'\nLoading Model: {checkpoint_path}\n')
+    model = load_model(pathModel=checkpoint_path, seqLen=8)
 
     sys.exit()
+    return model
+
+
+def loadPredictor(model_type, path):
+    print(f'Loading Model: {path}')
+    if model_type == 'lstm':
+        model = tf.keras.models.load_model(
+            path, custom_objects={"RNNPredictor": cleavenet.models.RNNPredictor}
+        )
+    elif model_type == 'transformer':
+        model = tf.keras.models.load_model(
+            path,
+            custom_objects={"TransformerEncoder": cleavenet.models.TransformerEncoder}
+        )
+    else:
+        print(f'ERROR: Invalid Model: {model_type}')
+        sys.exit(1)
+    model.summary()
     return model
 
 
@@ -782,7 +846,7 @@ def inference(model, dataloader, causal=False, seq_len=10, penalty=1, verbose=Fa
             start_seq = np.array([dataloader.char2idx[dataloader.START]], dtype=np.int32)  # start from START token
             generated_seq = tf.expand_dims(start_seq, 0)
             #print(f'Shapes:\n  Start Seq: {start_seq.shape}\n    Gen Seq: {generated_seq.shape}\n')
-        else: 
+        else:
             tag = np.array(conditioning_tag) # start from Z-scores
             generated_seq = (np.array([[]]), tag) # seq, tags
             #print(f'Shapes:\n  Gen Seq: {generated_seq}\n')
@@ -803,18 +867,18 @@ def inference(model, dataloader, causal=False, seq_len=10, penalty=1, verbose=Fa
                                 penalized_prediction = prediction.numpy()
                                 penalized_prediction[:, -1, int(predicted_id)] = prediction[0, -1, int(predicted_id)]/penalty
                                 predicted_id = tf.random.categorical(penalized_prediction[:, -1, :], num_samples=1, dtype=tf.int32)
-                    
+
                 if conditioning_tag is None:
                     generated_seq = tf.concat([generated_seq, predicted_id], 1)
                 else:
-                    generated_seq = (np.expand_dims(np.append(generated_seq[0], predicted_id), 0), tag)   
-                
+                    generated_seq = (np.expand_dims(np.append(generated_seq[0], predicted_id), 0), tag)
+
                 if verbose:
-                    if conditioning_tag is None:    
+                    if conditioning_tag is None:
                         print("step", i, "seq", cleavenet.data.untokenize_sequences(generated_seq, dataloader))
                     else:
                         print("step", i, "seq", cleavenet.data.untokenize_sequences(generated_seq[0].astype(int), dataloader))
-                
+
                 if predicted_id == dataloader.char2idx[dataloader.STOP]:
                     reach_stop = True
             else:
@@ -857,11 +921,11 @@ def prediction(dataPath, gen_data, generated_dir, dataset, model_weights,
             'lstm_3/',
             'lstm_4/'
         ]
-    
+
     dataloader = cleavenet.data.DataLoader(
         dataPath, seed=0, task='regression', model=predictor_model_type,
         test_split=0.2, dataset=dataset)
-    
+
     max_seq_len = max([len(s) for s in gen_data])
     gen_data = [cleavenet.data.pad(seq, max_seq_len=max_seq_len, pad_token='-') for seq in gen_data]
     x_all = cleavenet.data.tokenize_sequences(gen_data, dataloader)
@@ -922,17 +986,17 @@ def prediction(dataPath, gen_data, generated_dir, dataset, model_weights,
                 plotter.plot_auc(true_zscores[:,j], y_hat[:,i], i, mmps, generated_dir)
         pred = np.stack(pred, axis=1)
 
-    
+
     print("Calculated confidence")
     analysis.eval_all_mmp(means, x_all, dataloader, generated_dir, z_score_cutoff=0)
-    
+
     for i,m in enumerate(mmps):
         if i == 0:
             if os.path.exists(os.path.join(generated_dir, 'weighted_all_scores.csv')):
                 os.remove(os.path.join(generated_dir, 'weighted_all_scores.csv'))
-            if os.path.exists(os.path.join(generated_dir, 'all_uncertainty.csv')):   
+            if os.path.exists(os.path.join(generated_dir, 'all_uncertainty.csv')):
                 os.remove(os.path.join(generated_dir, 'all_uncertainty.csv'))
-            if os.path.exists(os.path.join(generated_dir, 'all_scores.csv')):   
+            if os.path.exists(os.path.join(generated_dir, 'all_scores.csv')):
                 os.remove(os.path.join(generated_dir, 'all_scores.csv'))
         print("Iterating over", m)
         scores = analysis.save_to_dataframe(x_all, None, i, means, std, z_cutoff=0, write_top_scores=True,
@@ -980,7 +1044,7 @@ def simple_inference(num_seqs, repeat_penalty, temperature, dataPath, dataset):
             model.built=True
             model.load_weights(checkpoint_path)  # Load model weights
             # Generate using loaded weights
-            generated_seq = cleavenet.models.inference(model, dataloader, 
+            generated_seq = cleavenet.models.inference(model, dataloader,
             										   scausal=True, eq_len=11,
                                                        penalty=repeat_penalty,
                                                        verbose=False,
