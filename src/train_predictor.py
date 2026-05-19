@@ -31,7 +31,8 @@ parser.add_argument(
 	help="File path for the training data"
 )
 parser.add_argument(
-	"--data-pathEV", default="Mpro2_ZPred_6AA_ExtValid_MinCounts10.csv",
+	"--data-pathEV",
+    default="Mpro2_CountsNorm_ExtValid_Q@R4_8AA_MinCounts10000.csv",
     type=str, help="File path for the External Validation (EV) data"
 )
 parser.add_argument(
@@ -220,7 +221,6 @@ def main():
                 args.regu, args.max_len, len(enzCol), mask_zero=True
             )
             lr = args.learning_rate # 0.005
-
         elif args.model_type == 'transformer':
             transformer=True
             num_layers=4
@@ -418,9 +418,9 @@ def main():
         yt_hat = model(xt, training=False)  # forward pass
         embeddings = model.last_layer_embeddings
         test_rmse = model.compute_rmse(yt, yt_hat, axis=0)  # compute val rmse
-        print(f'\nRMSE:\n'
-              f'* {enzList}\n'
-              f'* {test_rmse}\n')
+        print(f'\nRMSE:')
+        for i in range(len(enzList)):
+            print(f'* {enzList[i]}:  {test_rmse[i]}')
         results[ensembleStr][' Enz'] = enzList
         results[ensembleStr]['RMSE'] = test_rmse
 
