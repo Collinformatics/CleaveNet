@@ -76,9 +76,9 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-###################################################################################################
+##########################################################################################
 # Get data, split into train and test
-###################################################################################################
+##########################################################################################
 
 # Get path to data
 data_dir = get_data_dir()
@@ -112,9 +112,9 @@ print(f'\nTraining Model: {args.model_type}\n'
 
 random_seed = list(range(args.ensemble))
 
-###################################################################################################
+##########################################################################################
 # Function to run
-###################################################################################################
+##########################################################################################
 def main():
     if 'kukreja' in dataset:
         from cleavenet.utils import get_data_dir, mmps
@@ -352,8 +352,12 @@ def main():
                         dataloader, transformer=transformer
                     )
                     yv_hat = model(xv, training=False)
-                    val_loss.append(model.compute_loss(yv, yv_hat)*args.batch_size) # compute loss
-                    val_rmse.append(model.compute_rmse(yv, yv_hat)*args.batch_size) # compute val rmse
+                    val_loss.append(
+                        model.compute_loss(yv, yv_hat)*args.batch_size
+                    ) # compute loss
+                    val_rmse.append(
+                        model.compute_rmse(yv, yv_hat)*args.batch_size
+                    ) # compute val rmse
                 val_loss = np.sum(val_loss)/len(X_valid) # batch-averaged loss
                 val_rmse = np.sum(val_rmse)/len(X_valid)
 
@@ -446,7 +450,7 @@ def main():
         for i in range(len(enzList)):
             print(f'* {enzList[i]}:  {test_rmse[i]}')
         print()
-        results[ensembleStr][' Enz'] = enzList
+        results[ensembleStr]['Enz'] = enzList
         results[ensembleStr]['RMSE'] = test_rmse
 
         # Save embeddings for later
@@ -465,9 +469,11 @@ def main():
     print('Training Results:')
     for ens, data in results.items():
         print(f'* Ensemble: {ens}')
-
-        for i in range(data[' Enz']):
-            print(f"* {data[' Enz'][i]}: {data['RMSE'][i]}")
+        print(f'Data:\n'
+              f'* {data["Enz"]}'
+              f'* {data["RMSE"]}')
+        for i in range(data['Enz']):
+            print(f"* {data['Enz'][i]}: {data['RMSE'][i]}")
 
 
         # for k, v in data.items():

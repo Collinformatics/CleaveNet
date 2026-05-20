@@ -1,14 +1,13 @@
 import argparse
 import datetime
+import numpy as np
 import os
 import pandas as pd
 import random
 import sys
-import time
-
-import numpy as np
 import tensorflow as tf
 from tensorflow import keras
+import time
 from tqdm import tqdm
 
 import cleavenet
@@ -102,7 +101,10 @@ def main():
 		causal=True
 		model_label = '/AUTOREG_'+args.model_type
 		args.seq_len+=1 # account for start token
-		#dataloader = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='autoreg', test_split=0.2, dataset=dataset, rounded=True)
+		# dataloader = cleavenet.data.DataLoader(
+		# 	data_path, seed=0, task='generator', model='autoreg',
+		# 	test_split=0.2, dataset=dataset, rounded=True
+		# )
 		dataloader = cleavenet.data.DataLoader(
 			data_path, seed=0, task='generator', model='autoreg',
 			test_split=0.2, dataset=dataset, rounded=args.round
@@ -116,7 +118,10 @@ def main():
 			args.round = False
 		causal=False
 		model_label='/BERT_'+args.model_type
-		dataloader = cleavenet.data.DataLoader(data_path, seed=0, task='generator', model='bert', test_split=0.2, dataset=dataset)
+		dataloader = cleavenet.data.DataLoader(
+			data_path, seed=0, task='generator',
+			model='bert', test_split=0.2, dataset=dataset
+		)
 		masking_id = dataloader.char2idx[dataloader.MASK]
 		print("masking_id", masking_id)
 	else:
@@ -217,32 +222,32 @@ def main():
 	#@tf.function  # comment out for eager execution (if you want to debug)
 	def train_step_mask(x, y, mask):
 		with tf.GradientTape() as tape:
-		    if args.model_type == 'lstm':
-		        model.reset_states()
-		    y_hat = model(x, training=True)  # forward pass
-		    loss = model.compute_masked_loss(y, y_hat, mask)  # compute loss
-		    grads = tape.gradient(loss, model.trainable_variables)  # compute gradient
-		    optimizer.apply_gradients(zip(grads, model.trainable_variables))  # update
-		    return loss, y_hat
+			if args.model_type == 'lstm':
+				model.reset_states()
+			y_hat = model(x, training=True)  # forward pass
+			loss = model.compute_masked_loss(y, y_hat, mask)  # compute loss
+			grads = tape.gradient(loss, model.trainable_variables)  # compute gradient
+			optimizer.apply_gradients(zip(grads, model.trainable_variables))  # update
+			return loss, y_hat
 
 	#@tf.function
 	def train_step_autoreg(x, y):
 		#print(x)
 		with tf.GradientTape() as tape:
-		    if args.model_type == 'lstm':
-		        model.reset_states()
-		    y_hat = model(x, training=True)  # forward pass
-		    #print("y_hat", y_hat)
-		    loss = model.compute_loss(y, y_hat)  # compute loss
-		    grads = tape.gradient(loss, model.trainable_variables)  # compute gradient
-		    optimizer.apply_gradients(zip(grads, model.trainable_variables))  # update
-		    return loss, y_hat
+			if args.model_type == 'lstm':
+				model.reset_states()
+			y_hat = model(x, training=True)  # forward pass
+			#print("y_hat", y_hat)
+			loss = model.compute_loss(y, y_hat)  # compute loss
+			grads = tape.gradient(loss, model.trainable_variables)  # compute gradient
+			optimizer.apply_gradients(zip(grads, model.trainable_variables))  # update
+			return loss, y_hat
 
 	def smooth(prev, val):
 		if prev is not None:
-		    new = (1 - args.alpha) * val + args.alpha * prev
+			new = (1 - args.alpha) * val + args.alpha * prev
 		else:
-		    new = val
+			new = val
 		return new
 
 	global_step = 0
@@ -277,7 +282,8 @@ def main():
 		cond = 'both'
 	else:
 		cond = args.condition
-	if args.condition != 'unconditional' and args.training_scheme != 'bert' and args.round:
+	if (args.condition != 'unconditional' and
+			args.training_scheme != 'bert' and args.round):
 		cond += '_rounded'
 	pathDir = os.path.join('weights', dataset, model_label[1:], cond)
 	if not os.path.exists(pathDir):
@@ -287,7 +293,8 @@ def main():
 	if not os.path.exists(dirModels):
 		os.makedirs(dirModels)
 	while True:
-		tag = f'model_{idx}-{dataset.replace(" - ", " ").replace(" ", "_")}-{model_label[1:]}-{cond}'
+		tag = (f'model_{idx}-{dataset.replace(" - ", " ").replace(" ", "_")}-'
+			   f'{model_label[1:]}-{cond}')
 		pathFullModel = os.path.join(dirModels, f'{tag}.keras')
 		if not os.path.exists(pathFullModel):
 			pathModelLoss = os.path.join(dirModels, f'{tag}_loss.txt')
@@ -311,14 +318,18 @@ def main():
 		for iter in pbar:
 			# Grab a batch and train
 			if causal:
-			    x, y = cleavenet.data.get_autoreg_batch(dataloader.X_train, args.batch_size, dataloader, width=args.seq_len, conditioning_tag=conditioning_tag, rng=rng, randomize_tag=randomize_tag)
-			    loss, y_hat = train_step_autoreg(x, y)
-			    acc = model.compute_accuracy(y, y_hat)
+				x, y = cleavenet.data.get_autoreg_batch(
+					dataloader.X_train, args.batch_size, dataloader, width=args.seq_len,
+					conditioning_tag=conditioning_tag, rng=rng,
+					randomize_tag=randomize_tag)
+				loss, y_hat = train_step_autoreg(x, y)
+				acc = model.compute_accuracy(y, y_hat)
 			else:
-			    x, y, mask = cleavenet.data.get_masked_batch(dataloader.X_train, args.batch_size, rng, dataloader)
-			    n_tokens += mask.sum()
-			    loss, y_hat = train_step_mask(x, y, mask)
-			    acc = model.compute_masked_accuracy(y, y_hat, mask)
+				x, y, mask = cleavenet.data.get_masked_batch(
+					dataloader.X_train, args.batch_size, rng, dataloader)
+				n_tokens += mask.sum()
+				loss, y_hat = train_step_mask(x, y, mask)
+				acc = model.compute_masked_accuracy(y, y_hat, mask)
 
 			running_loss = smooth(running_loss, loss.numpy())
 
@@ -340,21 +351,31 @@ def main():
 			val_tokens = []
 			for v_iter in vbar:
 				if causal:
-					xv, yv = cleavenet.data.get_autoreg_batch(dataloader.X_test, args.batch_size, dataloader, width=args.seq_len, conditioning_tag=conditioning_tag_test, rng=rng, randomize_tag=randomize_tag)
+					xv, yv = cleavenet.data.get_autoreg_batch(
+						dataloader.X_test, args.batch_size, dataloader,
+						width=args.seq_len, conditioning_tag=conditioning_tag_test,
+						rng=rng, randomize_tag=randomize_tag
+					)
 					if args.model_type == 'lstm':
 						model.reset_states()
 					yv_hat = model(xv, training=False)  # forward pass
 					val_loss.append(model.compute_loss(yv, yv_hat)*args.batch_size)
 					val_acc.append(model.compute_accuracy(yv, yv_hat)*args.batch_size)
 				else:
-					xv, yv, mask_v = cleavenet.data.get_masked_batch(dataloader.X_test, args.batch_size, rng, dataloader)
+					xv, yv, mask_v = cleavenet.data.get_masked_batch(
+						dataloader.X_test, args.batch_size, rng, dataloader
+					)
 					if args.model_type == 'lstm':
 						model.reset_states()
 					n_tokens = np.sum(mask_v)
 					val_tokens.append(n_tokens)
 					yv_hat = model(xv, training=False)  # forward pass
-					val_loss.append(model.compute_masked_loss(yv, yv_hat, mask_v)*n_tokens) # compute loss
-					val_acc.append(model.compute_masked_accuracy(yv, yv_hat, mask_v)*n_tokens)
+					val_loss.append(
+						model.compute_masked_loss(yv, yv_hat, mask_v)*n_tokens
+					) # compute loss
+					val_acc.append(
+						model.compute_masked_accuracy(yv, yv_hat, mask_v)*n_tokens
+					)
 			if causal:
 				val_loss = np.sum(val_loss)/len(dataloader.X_test)
 				val_acc = np.sum(val_acc)/len(dataloader.X_test)
@@ -415,4 +436,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+	main()
