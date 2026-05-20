@@ -390,8 +390,8 @@ def main():
                 if epoch % 5 == 0:
                     print(
                         f'Epoch: {epoch}{(l - len(str(epoch))) * " "} | '
-                        f'Best Loss: {best_val_loss:.3f} | '
                         f'Loss: {val_loss:.3f} | '
+                        f'Best Loss: {best_val_loss:.3f} | '
                         f'Val RMSE: {val_rmse:.3f} | '
                         f'Ext Val loss: {extVal_loss.numpy():.3f}'
                     )
