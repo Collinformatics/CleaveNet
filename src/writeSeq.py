@@ -6,7 +6,7 @@ seqs = [
     'VILHSGFR', 'VIMQSGFR', 'VPLQSGFR', 'NILQSGFR',
 ]
 
-saveDir  = os.path.join('../splits', 'predict')
+saveDir  = os.path.join('../predict')
 savePath = os.path.join(saveDir, f'{enz}_subsPred.csv')
 print(f'Saving sequences at:\n  {savePath.replace("../", "")}')
 if not os.path.exists(savePath):

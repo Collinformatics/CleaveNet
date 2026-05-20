@@ -5,15 +5,16 @@ import pandas as pd
 import sys
 
 
+# Parse terminal inputs
 parser = argparse.ArgumentParser()
 parser.add_argument(
-"--model-architecture", type=str, default='transformer',
+	"--model-type", type=str, default='transformer',
 	help="'transformer' or 'lstm, for most use cases the default should be used'"
 )
 parser.add_argument(
-"--model-weights-dir", type=str, default=None,
+	"--model-dir", type=str, default=None,
 	help="Directory with the date and index where \"model.weights.h5\" are found. "
-		 "Ex: save/transformer_N/<model-weights-dir>/model.weights.h5"
+		 "Ex: save/transformer_N/<model-dir>/model.weights.h5"
 )
 parser.add_argument(
 	"--no-csv-header", action='store_true',
@@ -39,10 +40,12 @@ parser.add_argument(
 args = parser.parse_args()
 
 # Format weights dir
-if 'PREDICTOR' not in args.model_weights_dir:
-	args.model_weights_dir += '_PREDICTOR'
+if 'PREDICTOR' not in args.model_dir:
+	args.model_dir += '_PREDICTOR'
+print(f'Model type: {args.model_type}')
+print(f'Model dir:  {args.model_dir}')
 
-# Make dir
+# Make save dir
 if not os.path.exists(args.save_dir):
 	os.makedirs(args.save_dir, exist_ok=True)
 
@@ -64,37 +67,31 @@ else:
 
 true_scores=None
 if args.path_to_zscores is not None:
-    if args.no_csv_header:
-        true_scores = pd.read_csv(args.path_to_zscores, names=enzymes).to_numpy()
-    else:
-        true_scores = pd.read_csv(args.path_to_zscores)
-        enzymes = true_scores.columns.to_list()
-        true_scores = true_scores.to_numpy()
-data_dir = cleavenet.utils.get_data_dir()
-data_path = os.path.join(data_dir, args.path_to_sequence_csv)
+	if args.no_csv_header:
+		true_scores = pd.read_csv(args.path_to_zscores, names=enzymes).to_numpy()
+	else:
+		true_scores = pd.read_csv(args.path_to_zscores)
+		enzymes = true_scores.columns.to_list()
+		true_scores = true_scores.to_numpy()
 data_path = args.path_to_sequence_csv
-print(f'Paths:\n'
-	  f'* CSV: {args.path_to_sequence_csv}\n'
-	  f'* Data: {data_path}\n')
+if not data_path.startswith('predict'):
+	data_path = os.path.join('predict', data_path.lstrip('/'))
+print(f'Prediction Seqs: {data_path}')
 
 # Load prediction sequences
-input_df = pd.read_csv(
-	args.path_to_sequence_csv).set_index('sequence')
+input_df = pd.read_csv(data_path).set_index('sequence')
 eval_sequences = input_df.index.to_list()
-print(f'Prediction seqs:\n{eval_sequences}\n')
-
-# sys.exit()
+print(f'* {", ".join(eval_sequences)}\n')
 
 # Load in dataloader
 dataloader = cleavenet.data.DataLoader(
-	data_path, seed=0, task='generator',
-	model='autoreg', test_split=0.2, dataset=dataset
+	data_path, seed=0, model='autoreg', test_split=0.2, dataset=dataset
 )
 
-k_pred_zscores, k_std_zscores = cleavenet.models.prediction(
+pred_zscores, std_zscores = cleavenet.models.prediction(
 	data_path, eval_sequences, args.save_dir, dataset=dataset,
-	model_weights=args.model_weights_dir, checkpoint_dir='save/',
-	predictor_model_type=args.model_architecture,
+	model_weights=args.model_dir, checkpoint_dir='save/',
+	predictor_model_type=args.model_type,
 	true_zscores=true_scores, trueEnz=enzymes
 )
 

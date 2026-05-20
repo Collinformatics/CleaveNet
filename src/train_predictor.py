@@ -1,22 +1,18 @@
 import argparse
+import cleavenet
+from cleavenet import plotter
+from cleavenet.utils import get_data_dir
 import datetime
 import math
 import os
-import sys
-
 import numpy as np
 from sklearn.model_selection import train_test_split
+import sys
 import tensorflow as tf
 from tqdm import tqdm
 
 
-
-import cleavenet
-from cleavenet import plotter
-from cleavenet.utils import get_data_dir
-
-
-#parse from terminal
+# Parse terminal inputs
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "--alpha", default=0.99, type=float,
