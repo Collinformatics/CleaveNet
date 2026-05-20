@@ -441,10 +441,11 @@ def main():
         )
         yt_hat = model(xt, training=False)  # forward pass
         embeddings = model.last_layer_embeddings
-        test_rmse = model.compute_rmse(yt, yt_hat, axis=0)  # compute val rmse
+        test_rmse = model.compute_rmse(yt, yt_hat, axis=0) # compute val rmse
         print(f'\nRMSE:')
         for i in range(len(enzList)):
             print(f'* {enzList[i]}:  {test_rmse[i]}')
+        print()
         results[ensembleStr][' Enz'] = enzList
         results[ensembleStr]['RMSE'] = test_rmse
 
