@@ -774,7 +774,6 @@ def load_predictor_model(model_type, checkpoint_path, batch_size, mask_zero=Fals
     d_model = 32
     len_mmps = 18
 
-    print(f'Loading Model: {model_type}')
     if model_type == 'lstm':
         embedding_dim = 22
         dropout = 0.25
@@ -815,7 +814,6 @@ def load_predictor_model(model_type, checkpoint_path, batch_size, mask_zero=Fals
 
     # model.load_weights(checkpoint_path)  # load weights
     # model = tf.keras.models.load_model(checkpoint_path)
-    print(f'\nLoading Model: {checkpoint_path}\n')
     model = load_model(pathModel=checkpoint_path, seqLen=8)
 
     sys.exit()
@@ -823,7 +821,7 @@ def load_predictor_model(model_type, checkpoint_path, batch_size, mask_zero=Fals
 
 
 def loadPredictor(model_type, path):
-    print(f'Loading Model: {path}')
+    print(f'Loading Predictor Model: {path}')
     if model_type == 'lstm':
         model = tf.keras.models.load_model(
             path, custom_objects={"RNNPredictor": cleavenet.models.RNNPredictor}
@@ -921,13 +919,17 @@ def prediction(dataPath, gen_data, generated_dir, dataset, model_weights,
             'lstm_3/',
             'lstm_4/'
         ]
+    else:
+        print(f'ERROR: Invalid model type: {predictor_model_type}')
+        sys.exit(1)
 
     dataloader = cleavenet.data.DataLoader(
         dataPath, seed=0, task='regression', model=predictor_model_type,
         test_split=0.2, dataset=dataset)
 
     max_seq_len = max([len(s) for s in gen_data])
-    gen_data = [cleavenet.data.pad(seq, max_seq_len=max_seq_len, pad_token='-') for seq in gen_data]
+    gen_data = [cleavenet.data.pad(
+        seq, max_seq_len=max_seq_len, pad_token='-') for seq in gen_data]
     x_all = cleavenet.data.tokenize_sequences(gen_data, dataloader)
     if predictor_model_type == 'transformer':
         cls_idx = dataloader.char2idx[dataloader.CLS]
@@ -940,12 +942,16 @@ def prediction(dataPath, gen_data, generated_dir, dataset, model_weights,
         print("Running", e_num, ensemble)
         print("EVALUATING SEQUENCES FROM", generated_dir)
         checkpoint_path = os.path.join(
-            checkpoint_dir, ensemble, model_weights, 'model.weights.h5'
+            checkpoint_dir, ensemble, model_weights, 'model.keras'
         )
         # Build and load predictor model
-        model = cleavenet.models.load_predictor_model(
-            model_type=predictor_model_type, checkpoint_path=checkpoint_path,
-            batch_size=batch_size, mask_zero=True)
+        if dataset == 'kukreja':
+            model = cleavenet.models.load_predictor_model(
+                model_type=predictor_model_type, checkpoint_path=checkpoint_path,
+                batch_size=batch_size, mask_zero=True)
+        else:
+            model = loadPredictor(model_type=predictor_model_type, path=checkpoint_path)
+
         # Predict z-scores
         y_hat = model(x_all, training=False)  # forward pass
         if true_zscores is not None:

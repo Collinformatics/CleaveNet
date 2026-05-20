@@ -464,9 +464,9 @@ def main():
     # Print results
     print('Training Results:')
     for ens, data in results.items():
-        print(f'* Ensemble: {ens}')
+        print(f'Ensemble: {ens}')
         for i in range(len(data['Enz'])):
-            print(f"* {data['Enz'][i]}: {data['RMSE'][i]}")
+            print(f"* {data['Enz'][i]}, RMSE: {data['RMSE'][i]}")
         print()
 
 

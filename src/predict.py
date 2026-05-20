@@ -64,7 +64,7 @@ else:
 			dataset = part.split('_')[0]
 			enzymes = [dataset]
 			break
-
+print(f'Enzymes: {enzymes}')
 true_scores=None
 if args.path_to_zscores is not None:
 	if args.no_csv_header:
@@ -76,7 +76,7 @@ if args.path_to_zscores is not None:
 data_path = args.path_to_sequence_csv
 if not data_path.startswith('predict'):
 	data_path = os.path.join('predict', data_path.lstrip('/'))
-print(f'Prediction Seqs: {data_path}')
+print(f'\nPrediction Seqs: {data_path}')
 
 # Load prediction sequences
 input_df = pd.read_csv(data_path).set_index('sequence')
