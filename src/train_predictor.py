@@ -189,13 +189,13 @@ def main():
     numTrain = len(dataloader.X_train)
     if args.data_pathEV:
         N = len(dataloader.y)
-        print(f'\nDataLoader: N={N:,}\n'
+        print(f'\nDataLoader: {N:,} substrates\n'
               f' Training: {numTrain:,}, {100 * round(numTrain / N, 2)} %\n'
               f'  Testing: {numTest:,}, {100 * round(numTest / N, 2)} %\n'
               f'  Ext Val: {numValid:,}\n')
     else:
         N = len(dataloader.y) + numValid
-        print(f'\nDataLoader: N={N:,}\n'
+        print(f'\nDataLoader: {N:,}  substrates\n'
               f'  Training: {numTrain:,}, {100 * round(numTrain / N, 2)} %\n'
               f'   Testing: {numTest:,}, {100 * round(numTest / N, 2)} %\n'
               f' Ext Valid: {numValid:,}, {100 * round(numValid / N, 2)} %\n')
