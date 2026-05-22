@@ -12,7 +12,7 @@ import tensorflow as tf
 from tqdm import tqdm
 
 
-# Parse terminal inputs
+# Parse terminal inputs 124
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "--alpha", default=0.99, type=float,

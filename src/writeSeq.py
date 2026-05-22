@@ -7,9 +7,9 @@ seqs = [
 ]
 
 saveDir  = os.path.join('../predict')
-savePath = os.path.join(saveDir, f'{enz}_subsPred.csv')
+savePath = os.path.join(saveDir, f'{enz}_subsPred_{len(seqs[0])}AA.csv')
 print(f'Saving sequences at:\n  {savePath.replace("../", "")}')
-if not os.path.exists(savePath):
+if not os.path.exists(saveDir):
     os.makedirs(saveDir)
 
 with open(savePath, 'w') as f:
