@@ -972,13 +972,13 @@ def prediction(dataPath, gen_data, generated_dir, dataset, model_weights,
             np.save(os.path.join(generated_dir, 'embeddings.npy'), np.array(embeddings))
 
     predictions = np.stack(np.array(predictions))
-    print(predictions.shape)
+    print(f'\nPrediction Shape: {predictions.shape}')
     means, std = analysis.confidence_score(predictions, enzymes)
 
     if true_zscores is not None:
         print("plot true vs mean predicted")
         pred = []
-        for i, m in enumerate(mmps):
+        for i, m in enumerate(enzymes):
             if m in enzymes:
                 print(m)
                 j = enzymes.index(m)

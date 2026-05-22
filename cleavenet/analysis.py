@@ -93,17 +93,17 @@ def save_to_dataframe(x_all, y_all, mmp_idx, y_hat_all, uncertainty,
         # Write all scores once
         if not os.path.exists(os.path.join(save_path, 'weighted_all_scores.csv')):
             print("writing all scores")
-            all_scores = pd.DataFrame(y_hat_weighted, columns=mmps)
+            all_scores = pd.DataFrame(y_hat_weighted, columns=enzymes)
             all_scores['sequences'] = sequences
             all_scores = all_scores.set_index('sequences')
             all_scores.to_csv(os.path.join(save_path, 'weighted_all_scores.csv'))
 
         if not os.path.exists(os.path.join(save_path, 'all_scores.csv')):
             print("writing all scores")
-            all_scores = pd.DataFrame(y_hat_all, columns=mmps)
+            all_scores = pd.DataFrame(y_hat_all, columns=enzymes)
             all_scores['sequences'] = sequences
             all_scores = all_scores.set_index('sequences')
-            all_uncertainty = pd.DataFrame(uncertainty, columns=mmps)
+            all_uncertainty = pd.DataFrame(uncertainty, columns=enzymes)
             all_uncertainty['sequences'] = sequences
             all_uncertainty = all_uncertainty.set_index('sequences')
             all_scores.to_csv(os.path.join(save_path, 'all_scores.csv'))
