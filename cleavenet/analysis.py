@@ -27,8 +27,10 @@ def confidence_interval_1_sided(std, num_samples, confidence_level=0.80):
     return ci
 
 
-def save_to_dataframe(x_all, y_all, mmp_idx, y_hat_all, uncertainty, z_cutoff=0, write_top_scores=False,
-                      find_matches=False, dataloader=None, mmp=None, save_path=None, threshold=0, top=50):
+def save_to_dataframe(x_all, y_all, mmp_idx, y_hat_all, uncertainty,
+                      enzymes, z_cutoff=0, write_top_scores=False,
+                      find_matches=False, dataloader=None, mmp=None,
+                      save_path=None, threshold=0, top=50):
     labels = pd.DataFrame(data=x_all, index=np.arange(len(x_all)))
     if y_all is not None:
         labels['True Z-scores'] = y_all
@@ -142,17 +144,17 @@ def exact_match(sequences, dataloader):
     return exact_match_freq, active_match_freq #, s_array
 
 
-def eval_all_mmp(means, x_all, dataloader, save_path, z_score_cutoff=0):
+def eval_all_enzymes(means, x_all, dataloader, enzymes, save_path, z_score_cutoff=0):
     sequences = ["".join(dataloader.idx2char[s]) for s in x_all]
-    df = pd.DataFrame(means, columns=mmps)
+    df = pd.DataFrame(means, columns=enzymes)
     df['freq'] = [0] * len(df)
-    for mmp in mmps:
-        freq_index = df[df[mmp] >= z_score_cutoff].index
+    for e in enzymes:
+        freq_index = df[df[e] >= z_score_cutoff].index
         df['freq'].iloc[freq_index] += 1
     df['sequences'] = sequences
     df = df.set_index('sequences')
     df = df.sort_values('freq', ascending=False)[:20]
-    df.to_csv(os.path.join(save_path, 'allmmp_top20_cleaved.csv'))
+    df.to_csv(os.path.join(save_path, 'all_top20_cleaved.csv'))
 
 
 def extract_sequences(x_train, dataloader):

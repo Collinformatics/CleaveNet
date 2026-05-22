@@ -821,7 +821,7 @@ def load_predictor_model(model_type, checkpoint_path, batch_size, mask_zero=Fals
 
 
 def loadPredictor(model_type, path):
-    print(f'Loading Predictor Model: {path}')
+    print(f'Loading Predictor Model: {path}\n')
     if model_type == 'lstm':
         model = tf.keras.models.load_model(
             path, custom_objects={"RNNPredictor": cleavenet.models.RNNPredictor}
@@ -899,7 +899,7 @@ def inference(model, dataloader, causal=False, seq_len=10, penalty=1, verbose=Fa
 
 
 def prediction(dataPath, gen_data, generated_dir, dataset, model_weights,
-               true_zscores=None, trueEnz=None, checkpoint_dir='weights/',
+               true_zscores=None, enzymes=None, checkpoint_dir='save/',
                predictor_model_type='transformer', number_top_candidates=50):
     if not os.path.exists(generated_dir):
         os.mkdir(generated_dir)
@@ -940,7 +940,7 @@ def prediction(dataPath, gen_data, generated_dir, dataset, model_weights,
     predictions = []
     for e_num, ensemble in enumerate(ensembles):
         print("Running", e_num, ensemble)
-        print("EVALUATING SEQUENCES FROM", generated_dir)
+        print(f'EVALUATING SEQUENCES FROM: {generated_dir}\n')
         checkpoint_path = os.path.join(
             checkpoint_dir, ensemble, model_weights, 'model.keras'
         )
@@ -956,16 +956,16 @@ def prediction(dataPath, gen_data, generated_dir, dataset, model_weights,
         y_hat = model(x_all, training=False)  # forward pass
         if true_zscores is not None:
             subset_preds = []
-            for i, m in enumerate(mmps):
-                if m in trueEnz:
-                    j = trueEnz.index(m)
+            for i, m in enumerate(enzymes):
+                if m in enzymes:
+                    j = enzymes.index(m)
                     subset_preds.append(y_hat[:, i])
             subset_preds = np.stack(subset_preds, axis=1)
             mae = tf.reduce_mean(tf.abs(true_zscores - subset_preds), axis=0)
-            plotter.plot_mae(mae, trueEnz, generated_dir + str(e_num) + '_')
+            plotter.plot_mae(mae, enzymes, generated_dir + str(e_num) + '_')
             rmse = model.compute_rmse(true_zscores, subset_preds, axis=0)
-            plotter.plot_rmse(rmse, trueEnz, generated_dir + str(e_num) + '_')
-            plotter.plot_parity(true_zscores, subset_preds, trueEnz, generated_dir)
+            plotter.plot_rmse(rmse, enzymes, generated_dir + str(e_num) + '_')
+            plotter.plot_parity(true_zscores, subset_preds, enzymes, generated_dir)
         predictions.append(y_hat)
         if e_num == (len(ensembles)-1): # save embeddings from last ensemble model for plotting later
             embeddings = model.last_layer_embeddings
@@ -973,30 +973,34 @@ def prediction(dataPath, gen_data, generated_dir, dataset, model_weights,
 
     predictions = np.stack(np.array(predictions))
     print(predictions.shape)
-    means, std = analysis.confidence_score(predictions, mmps)
+    means, std = analysis.confidence_score(predictions, enzymes)
 
     if true_zscores is not None:
         print("plot true vs mean predicted")
         pred = []
         for i, m in enumerate(mmps):
-            if m in trueEnz:
+            if m in enzymes:
                 print(m)
-                j = trueEnz.index(m)
+                j = enzymes.index(m)
                 pred.append(y_hat[:, i])
-                scores = analysis.save_to_dataframe(x_all, true_zscores[:, j], i, means, std, z_cutoff=0,
-                                                    write_top_scores=True,
-                                                    dataloader=dataloader, mmp=m, save_path=generated_dir)
+                scores = analysis.save_to_dataframe(
+                    x_all, true_zscores[:, j], i, means, std, enzymes, z_cutoff=0,
+                    write_top_scores=True, dataloader=dataloader, mmp=m,
+                    save_path=generated_dir
+                )
                 plotter.true_pred_ranked_scatter_z(scores, generated_dir, m)
                 plotter.confidence_ranked_scatter_z(scores, generated_dir, m)
                 plotter.confusion(scores['Cleaved true'], scores['Cleaved pred'], generated_dir, m)
-                plotter.plot_auc(true_zscores[:,j], y_hat[:,i], i, mmps, generated_dir)
+                plotter.plot_auc(true_zscores[:,j], y_hat[:,i], i, enzymes, generated_dir)
         pred = np.stack(pred, axis=1)
 
 
     print("Calculated confidence")
-    analysis.eval_all_mmp(means, x_all, dataloader, generated_dir, z_score_cutoff=0)
+    analysis.eval_all_enzymes(
+        means, x_all, dataloader, enzymes, generated_dir, z_score_cutoff=0
+    )
 
-    for i,m in enumerate(mmps):
+    for i,m in enumerate(enzymes):
         if i == 0:
             if os.path.exists(os.path.join(generated_dir, 'weighted_all_scores.csv')):
                 os.remove(os.path.join(generated_dir, 'weighted_all_scores.csv'))
@@ -1005,9 +1009,11 @@ def prediction(dataPath, gen_data, generated_dir, dataset, model_weights,
             if os.path.exists(os.path.join(generated_dir, 'all_scores.csv')):
                 os.remove(os.path.join(generated_dir, 'all_scores.csv'))
         print("Iterating over", m)
-        scores = analysis.save_to_dataframe(x_all, None, i, means, std, z_cutoff=0, write_top_scores=True,
-                                            find_matches=True, dataloader=dataloader, mmp=m, save_path=generated_dir,
-                                            top=number_top_candidates)
+        scores = analysis.save_to_dataframe(
+            x_all, None, i, means, std, enzymes, z_cutoff=0, write_top_scores=True,
+            find_matches=True, dataloader=dataloader, mmp=m, save_path=generated_dir,
+            top=number_top_candidates
+        )
         plotter.confidence_ranked_scatter_z(scores, generated_dir, m)
         confidence_threshold = plotter.confidence_histogram(scores, generated_dir, m)
         plotter.confidence_ranked_scatter_z(scores, generated_dir, m, threshold=confidence_threshold)
@@ -1018,11 +1024,9 @@ def prediction(dataPath, gen_data, generated_dir, dataset, model_weights,
 def predict_scores_simple(substrates, dataPath, checkpoint_dir='../weights/', save_dir='outputs/', model_architecture='transformer'):
     data_dir = cleavenet.utils.get_data_dir()
     data_path = os.path.join(data_dir, dataPath)
-    pred_zscores, std_zscores = cleavenet.models.prediction(data_path,
-                                                            substrates,
-                                                            save_dir,
-                                                            predictor_model_type=model_architecture,
-                                                            checkpoint_dir=checkpoint_dir)
+    pred_zscores, std_zscores = cleavenet.models.prediction(
+        data_path, substrates, save_dir, predictor_model_type=model_architecture,
+        checkpoint_dir=checkpoint_dir)
     return pred_zscores, std_zscores
 
 def simple_inference(num_seqs, repeat_penalty, temperature, dataPath, dataset):
