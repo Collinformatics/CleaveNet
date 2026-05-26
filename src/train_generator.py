@@ -14,7 +14,7 @@ import cleavenet
 from cleavenet.utils import get_data_dir
 
 
-# parse from terminal
+# Parse terminal inputs
 parser = argparse.ArgumentParser() ##
 parser.add_argument(
 	"--alpha", default=0.99, type=float,
@@ -80,358 +80,412 @@ else:
 
 # Evaluate data_path
 if '_' in args.data_path and 'AA' in args.data_path:
-    dataset = args.data_path.replace('data/', '').replace('.csv', '')
-    sfname = args.data_path.split('_')
-    for s in sfname:
-    	if 'AA' in s:
-    		args.seq_len = int(s.strip('AA'))
+	dataset = args.data_path.replace('data/', '').replace('.csv', '')
+	sfname = args.data_path.split('_')
+	for s in sfname:
+		if 'AA' in s:
+			args.seq_len = int(s.strip('AA'))
 else:
-    dataset = args.data_path.strip('.csv')
+	dataset = args.data_path.strip('.csv')
 # f'Training Dataset: {dataset}\n'
 print(f'\nTraining Model: {args.model_type}\n'
       f'Dataset: {dataset}\n'
       f'Training Data: {data_path}\n'
       f'Sequence Length: {args.seq_len}\n'
       f'Training Scheme: {args.training_scheme}\n'
-      f'Round Z-scores: {args.round}\n')
+      f'Round scores: {args.round}\n')
 
 
 def main():
-	if args.training_scheme == 'autoreg':
-		causal=True
-		model_label = '/AUTOREG_'+args.model_type
-		args.seq_len+=1 # account for start token
-		# dataloader = cleavenet.data.DataLoader(
-		# 	data_path, seed=0, task='generator', model='autoreg',
-		# 	test_split=0.2, dataset=dataset, rounded=True
-		# )
-		dataloader = cleavenet.data.DataLoader(
-			data_path, seed=0, task='generator', model='autoreg',
-			test_split=0.2, dataset=dataset, rounded=args.round
-		)
-		start_id = dataloader.char2idx[dataloader.START]
-		end_id = dataloader.char2idx[dataloader.STOP]   
-		print("start_id", start_id)
-		print("stop_id", end_id)
-	elif args.training_scheme == 'bert':
-		if args.round:
-			args.round = False
-		causal=False
-		model_label='/BERT_'+args.model_type
-		dataloader = cleavenet.data.DataLoader(
-			data_path, seed=0, task='generator',
-			model='bert', test_split=0.2, dataset=dataset
-		)
-		masking_id = dataloader.char2idx[dataloader.MASK]
-		print("masking_id", masking_id)
-	else:
-		raise ValueError("Unknown training scheme")
+    if args.training_scheme == "autoreg":
+        causal = True
+        model_label = "/AUTOREG_" + args.model_type
+        args.seq_len += 1  # account for start token
+        # dataloader = cleavenet.data.DataLoader(
+        # 	data_path, seed=0, task='generator', model='autoreg',
+        # 	test_split=0.2, dataset=dataset, rounded=True
+        # )
+        dataloader = cleavenet.data.DataLoader(
+            data_path,
+            seed=0,
+            task="generator",
+            model="autoreg",
+            test_split=0.2,
+            dataset=dataset,
+            rounded=args.round,
+        )
+        start_id = dataloader.char2idx[dataloader.START]
+        end_id = dataloader.char2idx[dataloader.STOP]
+        print("start_id", start_id)
+        print("stop_id", end_id)
+    elif args.training_scheme == "bert":
+        if args.round:
+            args.round = False
+        causal = False
+        model_label = "/BERT_" + args.model_type
+        dataloader = cleavenet.data.DataLoader(
+            data_path,
+            seed=0,
+            task="generator",
+            model="bert",
+            test_split=0.2,
+            dataset=dataset,
+        )
+        masking_id = dataloader.char2idx[dataloader.MASK]
+        print("masking_id", masking_id)
+    else:
+        raise ValueError("Unknown training scheme")
 
-	# Get vocabulary size and num samples
-	vocab_size = len(dataloader.char2idx)
-	print("vocab length",  len(dataloader.char2idx))
-	print("vocab size",  vocab_size)
-	print(f'Training samples: {len(dataloader.X_train)}')
-	print(f'Test samples: {len(dataloader.X_test)}\n')
+    # Get vocabulary size and num samples
+    numTrain, numTest = len(dataloader.X_train), len(dataloader.X_test)
+    N = numTrain + numTest
+    vocab_size = len(dataloader.char2idx)
+    print("vocab length", len(dataloader.char2idx))
+    print("vocab size", vocab_size)
+    print(f"\nDatapoints: {N:,} substrates")
+    print(f"Training samples: {numTrain:,}, {round(numTrain / N, 1) * 100} %")
+    print(f"Test samples: {numTest:,}, {round(numTest / N, 1) * 100} %\n")
 
-	if args.condition == 'conditional' or args.condition == 'randomize':
-		conditioning_tag=dataloader.y_train
-		conditioning_tag_test=dataloader.y_test
-	else:
-		conditioning_tag=None
-		conditioning_tag_test=None
+    if args.condition == "conditional" or args.condition == "randomize":
+        conditioning_tag = dataloader.y_train
+        conditioning_tag_test = dataloader.y_test
+    else:
+        conditioning_tag = None
+        conditioning_tag_test = None
 
-	randomize_tag = False
-	if args.condition == 'randomize':
-		randomize_tag = True
+    randomize_tag = False
+    if args.condition == "randomize":
+        randomize_tag = True
 
+    if args.model_type == "transformer":
+        num_layers = 3
+        # num_layers = 2
+        if args.condition == "unconditional":
+            num_layers = 2
+        num_heads = 6
+        dropout = 0.25
+        # ========================== Overwrite Trial ==========================
+        num_heads = 8
+        num_layers = 4
+        dropout = 0.2
+        dff = args.d_model * 4
+        # =====================================================================
+        if causal:
+            if args.condition == "conditional" or args.condition == "randomize":
+                model = cleavenet.models.ConditionalTransformerDecoder(
+                    num_layers=num_layers,
+                    d_model=args.d_model,
+                    num_heads=num_heads,
+                    dff=dff,  # dense params
+                    vocab_size=vocab_size,
+                    dropout_rate=dropout,
+                )
+            elif args.condition == "unconditional":
+                model = cleavenet.models.TransformerDecoder(
+                    num_layers=num_layers,
+                    d_model=args.d_model,
+                    num_heads=num_heads,
+                    dff=dff,  # dense params
+                    vocab_size=vocab_size,
+                    dropout_rate=dropout,
+                )
+            else:
+                raise ValueError("Unknown model type")
+        else:
+            model = cleavenet.models.TransformerEncoder(
+                num_layers=num_layers,
+                d_model=args.d_model,
+                num_heads=num_heads,
+                dff=args.d_model,  # dense params
+                vocab_size=vocab_size,
+                dropout_rate=dropout,
+                mask_zero=False,
+            )
+        lr = cleavenet.models.TransformerSchedule(args.d_model)
+    elif args.model_type == "lstm":
+        regu = 0.01
+        num_heads = 8
+        dff = args.d_model * 4
+        if causal:
+            num_layers = 3
+            args.batch_size = 128
+            dropout = 0.2
+            embedding_dim = 64
+            # args.d_model = 32
+            model = cleavenet.models.AutoregressiveRNN(
+                args.batch_size,
+                vocab_size,
+                embedding_dim,
+                args.d_model,
+                dropout,
+                regu,
+                args.seq_len,
+                training=True,
+                mask_zero=False,
+                num_layers=num_layers,
+            )
+        else:
+            args.batch_size = 128
+            dropout = 0.01
+            embedding_dim = 64
+            # args.d_model = 64
+            num_layers = 3
+            args.learning_rate = 0.001
+            model = cleavenet.models.RNNGenerator(
+                args.batch_size,
+                vocab_size,
+                embedding_dim,
+                args.d_model,
+                dropout,
+                regu,
+                args.seq_len,
+                training=True,
+                num_layers=num_layers,
+            )
+        model.build((args.batch_size, None))
+        model.summary()
+        lr = args.learning_rate
+    optimizer = tf.optimizers.Adam(lr)
 
-	if args.model_type == 'transformer':
-		num_layers = 3
-		#num_layers = 2
-		if args.condition == 'unconditional':
-			num_layers = 2
-		num_heads = 6
-		dropout = 0.25
-		# ========================== Overwrite Trial ==========================
-		num_heads = 8
-		num_layers=4
-		dropout = 0.2
-		dff = args.d_model * 4
-		# =====================================================================
-		if causal:
-			if args.condition == 'conditional' or args.condition == 'randomize':
-				model = cleavenet.models.ConditionalTransformerDecoder(
-							        num_layers=num_layers,
-							        d_model=args.d_model,
-							        num_heads=num_heads,
-							        dff=dff, # dense params
-							        vocab_size=vocab_size,
-							        dropout_rate=dropout)
-			elif args.condition == 'unconditional':
-				model = cleavenet.models.TransformerDecoder(
-							            num_layers=num_layers,
-							            d_model=args.d_model,
-							            num_heads=num_heads,
-							            dff=dff, # dense params
-							            vocab_size=vocab_size,
-							            dropout_rate=dropout)
-			else:
-				raise ValueError("Unknown model type")
-		else:
-			model = cleavenet.models.TransformerEncoder(
-				num_layers=num_layers,
-				d_model=args.d_model,
-				num_heads=num_heads,
-				dff=args.d_model,  # dense params
-				vocab_size=vocab_size,
-				dropout_rate=dropout,
-				mask_zero=False)
+    # @tf.function  # comment out for eager execution (if you want to debug)
+    def train_step_mask(x, y, mask):
+        with tf.GradientTape() as tape:
+            if args.model_type == "lstm":
+                model.reset_states()
+            y_hat = model(x, training=True)  # forward pass
+            loss = model.compute_masked_loss(y, y_hat, mask)  # compute loss
+            grads = tape.gradient(loss, model.trainable_variables)  # compute gradient
+            optimizer.apply_gradients(zip(grads, model.trainable_variables))  # update
+            return loss, y_hat
 
-		lr = cleavenet.models.TransformerSchedule(args.d_model)
+    # @tf.function
+    def train_step_autoreg(x, y):
+        # print(x)
+        with tf.GradientTape() as tape:
+            # sys.exit()
+            model.reset_states()
 
-	elif args.model_type == 'lstm':
-		regu = 0.01
-		if causal:
-			num_layers = 3
-			args.batch_size = 128
-			dropout = 0.2
-			embedding_dim = 64
-			#args.d_model = 32
-			model = cleavenet.models.AutoregressiveRNN(
-				args.batch_size, vocab_size, embedding_dim, args.d_model, dropout, 
-				regu, args.seq_len, training=True, mask_zero=False, num_layers=num_layers
-			)
-		else:
-			args.batch_size = 128
-			dropout = 0.01
-			embedding_dim = 64
-			#args.d_model = 64
-			num_layers = 3
-			args.learning_rate = 0.001
-			model = cleavenet.models.RNNGenerator(
-				args.batch_size, vocab_size, embedding_dim, args.d_model, dropout,  
-				regu, args.seq_len, training=True, num_layers=num_layers
-			)
-		#model.build((args.batch_size, None))
-		model.summary()
-		lr = args.learning_rate
+            y_hat = model(x, training=True)  # forward pass
+            # print("y_hat", y_hat)
+            loss = model.compute_loss(y, y_hat)  # compute loss
+            grads = tape.gradient(loss, model.trainable_variables)  # compute gradient
+            optimizer.apply_gradients(zip(grads, model.trainable_variables))  # update
+            return loss, y_hat
 
-	optimizer = tf.optimizers.Adam(lr)
+    def smooth(prev, val):
+        if prev is not None:
+            new = (1 - args.alpha) * val + args.alpha * prev
+        else:
+            new = val
+        return new
 
-	#@tf.function  # comment out for eager execution (if you want to debug)
-	def train_step_mask(x, y, mask):
-		with tf.GradientTape() as tape:
-			if args.model_type == 'lstm':
-				model.reset_states()
-			y_hat = model(x, training=True)  # forward pass
-			loss = model.compute_masked_loss(y, y_hat, mask)  # compute loss
-			grads = tape.gradient(loss, model.trainable_variables)  # compute gradient
-			optimizer.apply_gradients(zip(grads, model.trainable_variables))  # update
-			return loss, y_hat
+    global_step = 0
+    running_loss = None
+    best_val_loss = float("inf")
+    n_tokens = 0
 
-	#@tf.function
-	def train_step_autoreg(x, y):
-		#print(x)
-		with tf.GradientTape() as tape:
-			if args.model_type == 'lstm':
-				model.reset_states()
-			y_hat = model(x, training=True)  # forward pass
-			#print("y_hat", y_hat)
-			loss = model.compute_loss(y, y_hat)  # compute loss
-			grads = tape.gradient(loss, model.trainable_variables)  # compute gradient
-			optimizer.apply_gradients(zip(grads, model.trainable_variables))  # update
-			return loss, y_hat
+    # LOGGING
+    current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    save_dir = os.path.join("save" + model_label, "{}_GEN".format(current_time))
+    os.makedirs(save_dir)
+    train_log_dir = os.path.join(
+        "logs" + model_label, "{}_GEN_train".format(current_time)
+    )
+    train_summary_writer = tf.summary.create_file_writer(train_log_dir)
+    val_log_dir = os.path.join("logs" + model_label, "{}_GEN_val".format(current_time))
+    val_summary_writer = tf.summary.create_file_writer(val_log_dir)
 
-	def smooth(prev, val):
-		if prev is not None:
-			new = (1 - args.alpha) * val + args.alpha * prev
-		else:
-			new = val
-		return new
+    # Print model params
+    print(
+        f'\nModel params:\n'
+        f'  num_layers: {num_layers}\n'
+        f'learningrate: {args.learning_rate}\n'
+        f'     d_model: {args.d_model}\n'
+        f'   num_heads: {num_heads}\n'
+        f'         dff: {dff}\n'
+        f'  vocab_size: {vocab_size}\n'
+        f'     dropout: {dropout}\n'
+    )
+    print(
+        f'\nModel Label: {model_label.replace("/", "")}\n'
+        f'Condition: {args.condition}\n'
+        f'Scheme: {args.training_scheme}'
+    )
 
-	global_step = 0
-	running_loss = None
-	best_val_loss = float('inf')
-	n_tokens = 0
+    # Model path
+    if args.condition == "randomize":
+        cond = "both"
+    else:
+        cond = args.condition
+    if (
+        args.condition != "unconditional"
+        and args.training_scheme != "bert"
+        and args.round
+    ):
+        cond += "_rounded"
+    pathDir = os.path.join("weights", dataset, model_label[1:], cond)
+    if not os.path.exists(pathDir):
+        os.makedirs(pathDir)
+    idx = 0
+    dirModels = "models"
+    if not os.path.exists(dirModels):
+        os.makedirs(dirModels)
+    while True:
+        tag = (
+            f"model_{idx}-{dataset.replace(' - ', ' ').replace(' ', '_')}-"
+            f"{model_label[1:]}-{cond}"
+        )
+        pathFullModel = os.path.join(dirModels, f"{tag}.keras")
+        if not os.path.exists(pathFullModel):
+            pathModelLoss = os.path.join(dirModels, f"{tag}_loss.txt")
+            break
+        idx += 1
+    pathTrainingLog = pathFullModel.replace(".keras", "_trainingLog.csv")
 
-	# LOGGING
-	current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-	save_dir = os.path.join('save'+model_label, '{}_GEN'.format(current_time))
-	os.makedirs(save_dir)
-	train_log_dir = os.path.join('logs'+model_label, '{}_GEN_train'.format(current_time))
-	train_summary_writer = tf.summary.create_file_writer(train_log_dir)
-	val_log_dir = os.path.join('logs'+model_label, '{}_GEN_val'.format(current_time))
-	val_summary_writer = tf.summary.create_file_writer(val_log_dir)
-	
-	# Print model params
-	print(f'\nModel params:\n'
-		  f'  num_layers: {num_layers}\n'
-		  f'learningrate: {args.learning_rate}\n'
-		  f'     d_model: {args.d_model}\n'
-		  f'   num_heads: {num_heads}\n'
-		  f'         dff: {dff}\n'
-		  f'  vocab_size: {vocab_size}\n'
-		  f'     dropout: {dropout}\n')
-	print(f'\nModel Label: {model_label.replace("/", "")}\n'
-		  f'Condition: {args.condition}\n'
-		  f'Scheme: {args.training_scheme}\n')
-	
-	# Model path
-	if args.condition == 'randomize':
-		cond = 'both'
-	else:
-		cond = args.condition
-	if (args.condition != 'unconditional' and
-			args.training_scheme != 'bert' and args.round):
-		cond += '_rounded'
-	pathDir = os.path.join('weights', dataset, model_label[1:], cond)
-	if not os.path.exists(pathDir):
-		os.makedirs(pathDir)
-	idx = 0
-	dirModels = 'models'
-	if not os.path.exists(dirModels):
-		os.makedirs(dirModels)
-	while True:
-		tag = (f'model_{idx}-{dataset.replace(" - ", " ").replace(" ", "_")}-'
-			   f'{model_label[1:]}-{cond}')
-		pathFullModel = os.path.join(dirModels, f'{tag}.keras')
-		if not os.path.exists(pathFullModel):
-			pathModelLoss = os.path.join(dirModels, f'{tag}_loss.txt')
-			break
-		idx += 1
-	pathTrainingLog = pathFullModel.replace('.keras', '_trainingLog.csv')
+    # print(f'Saving model params at: {pathModelLoss}')
+    print(f"\nSaving the trained model at:\n  {pathFullModel}\n")
+    # print(f'Saving the training log at:\n  {pathFullModel}\n')
 
-	#print(f'Saving model params at: {pathModelLoss}')
-	print(f'\nSaving the trained model at:\n  {pathFullModel}\n')
-	# print(f'Saving the training log at:\n  {pathFullModel}\n')
-	
-	# Train generator
-	data = pd.DataFrame(0.0, index=[], columns=['loss', 'valid acc'])
-	bestEpoch = ''
-	saves = 0
-	timeStart = time.time()
-	l = len(str(args.num_epochs))
-	for epoch in range(args.num_epochs + 1):
-		print(f'Epoch: {epoch}')
-		pbar = tqdm(range(int(len(dataloader.X_train) // args.batch_size)))
-		for iter in pbar:
-			# Grab a batch and train
-			if causal:
-				x, y = cleavenet.data.get_autoreg_batch(
-					dataloader.X_train, args.batch_size, dataloader, width=args.seq_len,
-					conditioning_tag=conditioning_tag, rng=rng,
-					randomize_tag=randomize_tag)
-				loss, y_hat = train_step_autoreg(x, y)
-				acc = model.compute_accuracy(y, y_hat)
-			else:
-				x, y, mask = cleavenet.data.get_masked_batch(
-					dataloader.X_train, args.batch_size, rng, dataloader)
-				n_tokens += mask.sum()
-				loss, y_hat = train_step_mask(x, y, mask)
-				acc = model.compute_masked_accuracy(y, y_hat, mask)
+    # Train generator
+    data = pd.DataFrame(0.0, index=[], columns=["loss", "valid acc"])
+    bestEpoch = ""
+    saves = 0
+    timeStart = time.time()
+    l = len(str(args.num_epochs))
+    for epoch in range(args.num_epochs + 1):
+        print(f"Epoch: {epoch}")
+        pbar = tqdm(range(int(len(dataloader.X_train) // args.batch_size)))
+        for iter in pbar:
+            # Grab a batch and train
+            if causal:
+                x, y = cleavenet.data.get_autoreg_batch(
+                    dataloader.X_train,
+                    args.batch_size,
+                    dataloader,
+                    width=args.seq_len,
+                    conditioning_tag=conditioning_tag,
+                    rng=rng,
+                    randomize_tag=randomize_tag,
+                )
+                if args.model_type == "lstm":
+                    x = x[0]
+                    y = y[:, :6]
+                # print(f'x: {x}\n\ny: {y}')
+                # sys.exit()
+                loss, y_hat = train_step_autoreg(x, y)
+                acc = model.compute_accuracy(y, y_hat)
+            else:
+                x, y, mask = cleavenet.data.get_masked_batch(
+                    dataloader.X_train, args.batch_size, rng, dataloader
+                )
+                n_tokens += mask.sum()
+                loss, y_hat = train_step_mask(x, y, mask)
+                acc = model.compute_masked_accuracy(y, y_hat, mask)
 
-			running_loss = smooth(running_loss, loss.numpy())
+            running_loss = smooth(running_loss, loss.numpy())
 
-			# saving
-			with train_summary_writer.as_default():
-				tf.summary.scalar('loss', loss, step=global_step)
-				tf.summary.scalar('accuracy', acc, step=global_step)
+            # saving
+            with train_summary_writer.as_default():
+                tf.summary.scalar("loss", loss, step=global_step)
+                tf.summary.scalar("accuracy", acc, step=global_step)
 
-			global_step += 1
-		if epoch == 0:
-			pbar.clear() 
-			print(2 * '\033[F\033[K', end='')
-			model.summary()
-			print('\n')
-		else: # run validation every epoch
-			vbar = tqdm(range(len(dataloader.X_test) // args.batch_size))
-			val_loss = []
-			val_acc = []
-			val_tokens = []
-			for v_iter in vbar:
-				if causal:
-					xv, yv = cleavenet.data.get_autoreg_batch(
-						dataloader.X_test, args.batch_size, dataloader,
-						width=args.seq_len, conditioning_tag=conditioning_tag_test,
-						rng=rng, randomize_tag=randomize_tag
-					)
-					if args.model_type == 'lstm':
-						model.reset_states()
-					yv_hat = model(xv, training=False)  # forward pass
-					val_loss.append(model.compute_loss(yv, yv_hat)*args.batch_size)
-					val_acc.append(model.compute_accuracy(yv, yv_hat)*args.batch_size)
-				else:
-					xv, yv, mask_v = cleavenet.data.get_masked_batch(
-						dataloader.X_test, args.batch_size, rng, dataloader
-					)
-					if args.model_type == 'lstm':
-						model.reset_states()
-					n_tokens = np.sum(mask_v)
-					val_tokens.append(n_tokens)
-					yv_hat = model(xv, training=False)  # forward pass
-					val_loss.append(
-						model.compute_masked_loss(yv, yv_hat, mask_v)*n_tokens
-					) # compute loss
-					val_acc.append(
-						model.compute_masked_accuracy(yv, yv_hat, mask_v)*n_tokens
-					)
-			if causal:
-				val_loss = np.sum(val_loss)/len(dataloader.X_test)
-				val_acc = np.sum(val_acc)/len(dataloader.X_test)
-			else:
-				val_loss = np.sum(val_loss)/np.sum(val_tokens)
-				val_acc = np.sum(val_acc)/np.sum(val_tokens)
+            global_step += 1
+        if epoch == 0:
+            pbar.clear()
+            print(2 * "\033[F\033[K", end="")
+            model.summary()
+            print("\n")
+        else:  # run validation every epoch
+            vbar = tqdm(range(len(dataloader.X_test) // args.batch_size))
+            val_loss = []
+            val_acc = []
+            val_tokens = []
+            for v_iter in vbar:
+                if causal:
+                    xv, yv = cleavenet.data.get_autoreg_batch(
+                        dataloader.X_test,
+                        args.batch_size,
+                        dataloader,
+                        width=args.seq_len,
+                        conditioning_tag=conditioning_tag_test,
+                        rng=rng,
+                        randomize_tag=randomize_tag,
+                    )
+                    if args.model_type == "lstm":
+                        xv = xv[0]
+                        yv = yv[:, :6]
+                        model.reset_states()
+                    yv_hat = model(xv, training=False)  # forward pass
+                    val_loss.append(model.compute_loss(yv, yv_hat) * args.batch_size)
+                    val_acc.append(model.compute_accuracy(yv, yv_hat) * args.batch_size)
+                else:
+                    xv, yv, mask_v = cleavenet.data.get_masked_batch(
+                        dataloader.X_test, args.batch_size, rng, dataloader
+                    )
+                    if args.model_type == "lstm":
+                        model.reset_states()
+                    n_tokens = np.sum(mask_v)
+                    val_tokens.append(n_tokens)
+                    yv_hat = model(xv, training=False)  # forward pass
+                    val_loss.append(
+                        model.compute_masked_loss(yv, yv_hat, mask_v) * n_tokens
+                    )  # compute loss
+                    val_acc.append(
+                        model.compute_masked_accuracy(yv, yv_hat, mask_v) * n_tokens
+                    )
+            if causal:
+                val_loss = np.sum(val_loss) / len(dataloader.X_test)
+                val_acc = np.sum(val_acc) / len(dataloader.X_test)
+            else:
+                val_loss = np.sum(val_loss) / np.sum(val_tokens)
+                val_acc = np.sum(val_acc) / np.sum(val_tokens)
 
+            # saving
+            with val_summary_writer.as_default():
+                tf.summary.scalar("loss", val_loss, step=epoch)
+                tf.summary.scalar("accuracy", val_acc, step=epoch)
 
-			# saving
-			with val_summary_writer.as_default():
-				tf.summary.scalar('loss', val_loss, step=epoch)
-				tf.summary.scalar('accuracy', val_acc, step=epoch)
+            print(3 * "\033[F\033[K", end="")  # Clear progress bar
 
-			print(3 * '\033[F\033[K', end='')  # Clear progress bar
+            # Log data
+            if epoch % 10 == 0:
+                timeEnd = time.time()
+                timeTrain = ((timeEnd - timeStart) / 60) / 60  # convert to hr
+                print(
+                    f"Epoch: {epoch}{(l - len(str(epoch))) * ' '} | "
+                    f"Loss: {val_loss:.3f} | "
+                    f"Best Loss: {best_val_loss:.3f} | "
+                    f"Validation Accuracy: {val_acc:.3f} | "
+                    f"Runtime: {timeTrain:,.2f}hr"
+                )
+                data.loc[epoch, "loss"] = val_loss
+                data.loc[epoch, "valid acc"] = val_acc
+                data.to_csv(pathTrainingLog, index=True)
 
-			# Log data
-			if epoch % 5 == 0:
-				timeEnd = time.time()
-				timeTrain = ((timeEnd - timeStart) / 60) / 60  # convert to hr
-				print(
-					f"Epoch: {epoch}{(l - len(str(epoch))) * ' '} | "
-					f"Best Loss: {best_val_loss:.3f} | "
-					f"Loss: {val_loss:.3f} | "
-					f"Validation Accuracy: {val_acc:.3f} | "
-					f"Runtime: {timeTrain:,.2f}hr"
-				)
+            # Save model if validation loss decreases
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                model.save(pathFullModel)  # Save the model
+                with open(pathModelLoss, "w") as f:  # Save the params
+                    f.write(f"Loss: {best_val_loss}\n")
+                    for action in parser._actions:  # Write job params
+                        if action.dest != "help":  # skip help action
+                            value = getattr(args, action.dest)
+                            f.write(f"{','.join(action.option_strings)}={value}\n")
 
-				data.loc[epoch, 'loss'] = val_loss
-				data.loc[epoch, 'valid acc'] = val_acc
-				data.to_csv(pathTrainingLog, index=True)
-
-			# Save model if validation loss decreases
-			if val_loss < best_val_loss:
-				best_val_loss = val_loss
-				model.save(pathFullModel) # Save the model
-				with open(pathModelLoss, 'w') as f: # Save the params
-					f.write(f'Loss: {best_val_loss}\n')
-					for action in parser._actions: # Write job params
-						if action.dest != "help":  # skip help action
-							value = getattr(args, action.dest)
-							f.write(f'{",".join(action.option_strings)}={value}\n')
-
-
-	# Job summary
-	timeEnd = time.time()
-	timeTrain = ((timeEnd - timeStart) / 60) / 60 # convert to hr
-	timeItr = args.num_epochs / timeTrain
-	print(f'\nModel saved at:\n  {pathFullModel}')
-	print(f'Summary:\n  {pathModelLoss}')
-	print(f'Training Log:\n  {pathTrainingLog}')
-	print(f'Training Time: {timeTrain:.2f}hr, {timeItr:.2f}epoch/hr')
-	print(f'Loss: {float(best_val_loss)}\n')
-	save_file = save_dir + '/best_loss.csv'
-	with open(save_file, 'w') as f:
-		f.write(str(best_val_loss) + '\n')
-	data.to_csv(pathTrainingLog, index=True)
+    # Job summary
+    timeEnd = time.time()
+    timeTrain = ((timeEnd - timeStart) / 60) / 60  # convert to hr
+    timeItr = args.num_epochs / timeTrain
+    print(f"\nModel saved at:\n  {pathFullModel}")
+    print(f"Summary:\n  {pathModelLoss}")
+    print(f"Training Log:\n  {pathTrainingLog}")
+    print(f"\nTraining Time: {timeTrain:.2f}hr, {timeItr:.2f}epoch/hr")
+    print(f"Loss: {float(best_val_loss)}\n")
+    save_file = save_dir + "/best_loss.csv"
+    with open(save_file, "w") as f:
+        f.write(str(best_val_loss) + "\n")
+    data.to_csv(pathTrainingLog, index=True)
 
 
 

@@ -57,15 +57,15 @@ else:
 # Evaluate data_path
 seqLen = None
 if '_' in args.data_path and 'AA' in args.data_path:
-    #dataset = args.data_path.split(' - ')[0].replace('data/', '')
-    dataset = args.data_path.replace('data/', '').replace('.csv', '')
-    fname = args.data_path.split('_')
-    for s in fname:
-    	if 'AA' in s:
-    		seqLen = int(s.strip(' AA'))
+	#dataset = args.data_path.split(' - ')[0].replace('data/', '')
+	dataset = args.data_path.replace('data/', '').replace('.csv', '')
+	fname = args.data_path.split('_')
+	for s in fname:
+		if 'AA' in s:
+			seqLen = int(s.strip(' AA'))
 else:
-    dataset = args.data_path.strip('.csv')
-    seqLen = 10
+	dataset = args.data_path.strip('.csv')
+	seqLen = 10
 # f'Training Dataset: {dataset}\n'
 print(f'\nTraining Data: {data_path}\n'
       #f'      Dataset: {dataset}\n'
@@ -83,9 +83,9 @@ start_id = dataloader.char2idx[dataloader.START]
 vocab_size = len(dataloader.char2idx)
 
 # Load model
+if not args.model.startswith('models/'):
+	args.model = 'models/' + args.model
 model = cleavenet.models.load_model(pathModel=args.model, seqLen=seqLen)
-print()
-
 # 
 if args.z_scores is not None:
 	cond_z_scores = pd.read_csv(args.z_scores)
