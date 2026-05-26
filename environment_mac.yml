@@ -6,10 +6,6 @@ dependencies:
   # Python version
   - python=3.11
 
-  # macOS only
-  - tensorflow-macos
-  - tensorflow-metal
-
   # Data & ML libraries
   - scikit-learn
   - pandas
@@ -34,3 +30,6 @@ dependencies:
       - peptides
       - jellyfish
 
+      # macOS only
+      - tensorflow-macos==2.13.0
+      - tensorflow-metal==1.0.1
