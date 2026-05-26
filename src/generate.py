@@ -83,8 +83,9 @@ start_id = dataloader.char2idx[dataloader.START]
 vocab_size = len(dataloader.char2idx)
 
 # Load model
-if not args.model.startswith('models/'):
-	args.model = 'models/' + args.model
+dirModels = os.path.join('models', 'generate')
+if not args.model.startswith(dirModels):
+	args.model = os.path.join(dirModels, args.model)
 model = cleavenet.models.load_model(pathModel=args.model, seqLen=seqLen)
 # 
 if args.z_scores is not None:

@@ -898,9 +898,12 @@ def inference(model, dataloader, causal=False, seq_len=10, penalty=1, verbose=Fa
     return generated_seq
 
 
-def prediction(dataPath, gen_data, generated_dir, dataset, model_weights,
-               true_zscores=None, enzymes=None, checkpoint_dir='save/',
-               predictor_model_type='transformer', number_top_candidates=50):
+def prediction(dataPath, gen_data, generated_dir, dataset, model_dir,
+               true_zscores=None, enzymes=None, predictor_model_type='transformer',
+               number_top_candidates=50):
+    checkpoint_dir = os.path.join('models', 'predictor')
+    if not os.path.exists(checkpoint_dir):
+        os.mkdir(checkpoint_dir)
     if not os.path.exists(generated_dir):
         os.mkdir(generated_dir)
     if predictor_model_type == 'transformer':
@@ -942,7 +945,7 @@ def prediction(dataPath, gen_data, generated_dir, dataset, model_weights,
         print("Running", e_num, ensemble)
         print(f'EVALUATING SEQUENCES FROM: {generated_dir}\n')
         checkpoint_path = os.path.join(
-            checkpoint_dir, ensemble, model_weights, 'model.keras'
+            checkpoint_dir, ensemble, model_dir, 'model.keras'
         )
         # Build and load predictor model
         if dataset == 'kukreja':

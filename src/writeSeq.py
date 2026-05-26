@@ -6,11 +6,11 @@ seqs = [
     'VILHSGFR', 'VIMQSGFR', 'VPLQSGFR', 'NILQSGFR',
 ]
 
-saveDir  = 'predict'
-savePath = os.path.join(saveDir, f'{enz}_subsPred_{len(seqs[0])}AA.csv')
+path = os.path.join('sequences', 'predict')
+savePath = os.path.join(path, f'{enz}_subsPred_{len(seqs[0])}AA.csv')
 print(f'Saving sequences at:\n  {savePath.replace("../", "")}')
-if not os.path.exists(saveDir):
-    os.makedirs(saveDir)
+if not os.path.exists(path):
+    os.makedirs(path)
 
 with open(savePath, 'w') as f:
     f.write('sequence\n')

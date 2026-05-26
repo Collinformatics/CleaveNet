@@ -261,7 +261,7 @@ def main():
         else:
             print(f'ERROR: InumValid Model: {args.model_type}')
             sys.exit(1)
-        model_label='/'+args.model_type+'_'+str(ensemble)
+        model_label = args.model_type + '_' + str(ensemble)
         model.build((args.batch_size, None))
         model.summary()
         print()
@@ -298,21 +298,21 @@ def main():
         while True:
             current_time = datetime.datetime.now().strftime("%Y%m%d")
             save_dir = os.path.join(
-                'save' + model_label, f'{current_time}-{idx}_PREDICTOR'
+                'models', 'predictor', model_label, f'{current_time}-{idx}_PREDICTOR'
             )
             if not os.path.exists(save_dir):
                 os.makedirs(save_dir)
                 break
             idx += 1
         train_log_dir = os.path.join(
-            'logs' + model_label, f'{current_time}-{idx}_PREDICTOR'
+            'logs', 'predictor', model_label, f'{current_time}-{idx}_PREDICTOR'
         )
         train_summary_writer = tf.summary.create_file_writer(train_log_dir)
         val_log_dir = os.path.join(
-            'logs' + model_label, f'{current_time}-{idx}_PREDICTOR_val'
+            'logs', 'predictor', model_label, f'{current_time}-{idx}_PREDICTOR_val'
         )
         val_summary_writer = tf.summary.create_file_writer(val_log_dir)
-
+        sys.exit()
         l = len(str(args.num_epochs))
         for epoch in range(args.num_epochs + 1):
             print(f'Epoch: {epoch} / {args.num_epochs}')

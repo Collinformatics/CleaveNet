@@ -99,7 +99,7 @@ print(f'\nTraining Model: {args.model_type}\n'
 def main():
     if args.training_scheme == "autoreg":
         causal = True
-        model_label = "/AUTOREG_" + args.model_type
+        model_label = "AUTOREG_" + args.model_type
         args.seq_len += 1  # account for start token
         # dataloader = cleavenet.data.DataLoader(
         # 	data_path, seed=0, task='generator', model='autoreg',
@@ -122,7 +122,7 @@ def main():
         if args.round:
             args.round = False
         causal = False
-        model_label = "/BERT_" + args.model_type
+        model_label = "BERT_" + args.model_type
         dataloader = cleavenet.data.DataLoader(
             data_path,
             seed=0,
@@ -180,6 +180,9 @@ def main():
                     vocab_size=vocab_size,
                     dropout_rate=dropout,
                 )
+                dummy_seq = tf.zeros((1, args.seq_len), dtype=tf.int32)
+                dummy_cond = tf.zeros((1, 1), dtype=tf.float32)
+                model((dummy_seq, dummy_cond), training=False)
             elif args.condition == "unconditional":
                 model = cleavenet.models.TransformerDecoder(
                     num_layers=num_layers,
@@ -189,6 +192,8 @@ def main():
                     vocab_size=vocab_size,
                     dropout_rate=dropout,
                 )
+                dummy_seq = tf.zeros((1, args.seq_len), dtype=tf.int32)
+                model(dummy_seq, training=False)
             else:
                 raise ValueError("Unknown model type")
         else:
@@ -201,6 +206,8 @@ def main():
                 dropout_rate=dropout,
                 mask_zero=False,
             )
+            dummy_seq = tf.zeros((1, args.seq_len), dtype=tf.int32)  # ← add this
+            model(dummy_seq, training=False)
         lr = cleavenet.models.TransformerSchedule(args.d_model)
     elif args.model_type == "lstm":
         regu = 0.01
@@ -242,9 +249,10 @@ def main():
                 training=True,
                 num_layers=num_layers,
             )
-        model.build((args.batch_size, None))
-        model.summary()
+        dummy_seq = tf.zeros((args.batch_size, args.seq_len), dtype=tf.int32)
+        model(dummy_seq, training=False)
         lr = args.learning_rate
+    model.summary()
     optimizer = tf.optimizers.Adam(lr)
 
     # @tf.function  # comment out for eager execution (if you want to debug)
@@ -286,31 +294,28 @@ def main():
 
     # LOGGING
     current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    save_dir = os.path.join("save" + model_label, "{}_GEN".format(current_time))
+    save_dir = os.path.join('models', 'generator', model_label, "{}_GEN".format(current_time))
     os.makedirs(save_dir)
     train_log_dir = os.path.join(
-        "logs" + model_label, "{}_GEN_train".format(current_time)
+        'logs', 'generator', model_label, "{}_GEN_train".format(current_time)
     )
     train_summary_writer = tf.summary.create_file_writer(train_log_dir)
-    val_log_dir = os.path.join("logs" + model_label, "{}_GEN_val".format(current_time))
+    val_log_dir = os.path.join(
+        'logs', 'generator', model_label, "{}_GEN_val".format(current_time))
     val_summary_writer = tf.summary.create_file_writer(val_log_dir)
 
     # Print model params
-    print(
-        f'\nModel params:\n'
-        f'  num_layers: {num_layers}\n'
-        f'learningrate: {args.learning_rate}\n'
-        f'     d_model: {args.d_model}\n'
-        f'   num_heads: {num_heads}\n'
-        f'         dff: {dff}\n'
-        f'  vocab_size: {vocab_size}\n'
-        f'     dropout: {dropout}\n'
-    )
-    print(
-        f'\nModel Label: {model_label.replace("/", "")}\n'
-        f'Condition: {args.condition}\n'
-        f'Scheme: {args.training_scheme}'
-    )
+    print(f'\nModel params:\n'
+          f'  num_layers: {num_layers}\n'
+          f'learningrate: {args.learning_rate}\n'
+          f'     d_model: {args.d_model}\n'
+          f'   num_heads: {num_heads}\n'
+          f'         dff: {dff}\n'
+          f'  vocab_size: {vocab_size}\n'
+          f'     dropout: {dropout}\n')
+    print(f'\nModel Label: {model_label.replace("/", "")}\n'
+          f'Condition: {args.condition}\n'
+          f'Scheme: {args.training_scheme}')
 
     # Model path
     if args.condition == "randomize":
@@ -327,29 +332,30 @@ def main():
     if not os.path.exists(pathDir):
         os.makedirs(pathDir)
     idx = 0
-    dirModels = "models"
+
+    # Save directory
+    dirModels = os.path.join("models", "generate")
     if not os.path.exists(dirModels):
         os.makedirs(dirModels)
     while True:
         tag = (
-            f"model_{idx}-{dataset.replace(' - ', ' ').replace(' ', '_')}-"
-            f"{model_label[1:]}-{cond}"
+            f'model_{idx}-{dataset.replace(" - ", " ").replace(" ", "_")}-'
+            f'{model_label}-{cond}'
         )
-        pathFullModel = os.path.join(dirModels, f"{tag}.keras")
-        if not os.path.exists(pathFullModel):
+        pathModel = os.path.join(dirModels, f"{tag}.keras")
+        if not os.path.exists(pathModel):
             pathModelLoss = os.path.join(dirModels, f"{tag}_loss.txt")
             break
         idx += 1
-    pathTrainingLog = pathFullModel.replace(".keras", "_trainingLog.csv")
+    pathTrainingLog = pathModel.replace(".keras", "_trainingLog.csv")
 
     # print(f'Saving model params at: {pathModelLoss}')
-    print(f"\nSaving the trained model at:\n  {pathFullModel}\n")
-    # print(f'Saving the training log at:\n  {pathFullModel}\n')
+    print(f"\nSaving the trained model at:\n  {pathModel}\n")
+    # print(f'Saving the training log at:\n  {pathModel}\n')
+
 
     # Train generator
     data = pd.DataFrame(0.0, index=[], columns=["loss", "valid acc"])
-    bestEpoch = ""
-    saves = 0
     timeStart = time.time()
     l = len(str(args.num_epochs))
     for epoch in range(args.num_epochs + 1):
@@ -465,7 +471,7 @@ def main():
             # Save model if validation loss decreases
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
-                model.save(pathFullModel)  # Save the model
+                model.save(pathModel)  # Save the model
                 with open(pathModelLoss, "w") as f:  # Save the params
                     f.write(f"Loss: {best_val_loss}\n")
                     for action in parser._actions:  # Write job params
@@ -477,7 +483,7 @@ def main():
     timeEnd = time.time()
     timeTrain = ((timeEnd - timeStart) / 60) / 60  # convert to hr
     timeItr = args.num_epochs / timeTrain
-    print(f"\nModel saved at:\n  {pathFullModel}")
+    print(f"\nModel saved at:\n  {pathModel}")
     print(f"Summary:\n  {pathModelLoss}")
     print(f"Training Log:\n  {pathTrainingLog}")
     print(f"\nTraining Time: {timeTrain:.2f}hr, {timeItr:.2f}epoch/hr")

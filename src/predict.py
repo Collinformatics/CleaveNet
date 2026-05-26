@@ -13,8 +13,8 @@ parser.add_argument(
 )
 parser.add_argument(
 	"--model-dir", type=str, default=None,
-	help="Directory with the date and index where \"model.keras\" are found. "
-		 "Ex: save/transformer_N/<model-dir>/model.keras"
+	help="Directory with the date and index where \"model.keras\" is found. "
+		 "Ex: models/predictor/DATE-0_PREDICTOR"
 )
 parser.add_argument(
 	"--no-csv-header", action='store_true',
@@ -23,7 +23,7 @@ parser.add_argument(
 )
 parser.add_argument(
 	"--path-to-sequence-csv", type=str, default='/data/',
-	help="Path to csv file where each line should be a new peptide sequence"
+	help="Path to csv file with the sequences that will be analyzed"
 )
 parser.add_argument(
 	"--path-to-zscores", type=str, default=None,
@@ -33,10 +33,6 @@ parser.add_argument(
 		 "the first row of this file should correspond to the MMPs in each row. "
 		 "The default is to assign each column to MMPs in the order we analyzed the data"
 )
-parser.add_argument(
-	"--save-dir", type=str, default='outputs/',
-	help="Directory to save model outputs too"
-)
 args = parser.parse_args()
 
 # Format weights dir
@@ -44,10 +40,6 @@ if 'PREDICTOR' not in args.model_dir:
 	args.model_dir += '_PREDICTOR'
 print(f'Model type: {args.model_type}')
 print(f'Model dir:  {args.model_dir}')
-
-# Make save dir
-if not os.path.exists(args.save_dir):
-	os.makedirs(args.save_dir, exist_ok=True)
 
 # Define column names
 dataset = None
@@ -74,8 +66,9 @@ if args.path_to_zscores is not None:
 		enzymes = true_scores.columns.to_list()
 		true_scores = true_scores.to_numpy()
 data_path = args.path_to_sequence_csv
-if not data_path.startswith('predict'):
-	data_path = os.path.join('predict', data_path.lstrip('/'))
+path = os.path.join('sequences', 'predict')
+if not data_path.startswith(path):
+	data_path = os.path.join(path, data_path.lstrip('/'))
 print(f'\nPrediction Seqs: {data_path}')
 
 # Load prediction sequences
@@ -89,8 +82,7 @@ dataloader = cleavenet.data.DataLoader(
 )
 
 pred_zscores, std_zscores = cleavenet.models.prediction(
-	data_path, eval_sequences, args.save_dir, dataset=dataset,
-	model_weights=args.model_dir, predictor_model_type=args.model_type,
-	true_zscores=true_scores, enzymes=enzymes
+	data_path, eval_sequences, data_path, dataset=dataset, model_dir=args.model_dir,
+	predictor_model_type=args.model_type, true_zscores=true_scores, enzymes=enzymes
 )
 
