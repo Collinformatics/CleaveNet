@@ -294,14 +294,21 @@ def main():
 
     # LOGGING
     current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    save_dir = os.path.join('models', 'generator', model_label, "{}_GEN".format(current_time))
-    os.makedirs(save_dir)
+    idx = 0
+    while True:
+        dirModel = os.path.join('models', 'generator', model_label,
+                                f'{current_time}_GEN-{idx}')
+        if not os.path.exists(dirModel):
+            break
+        idx += 1
+    os.makedirs(dirModel)
     train_log_dir = os.path.join(
-        'logs', 'generator', model_label, "{}_GEN_train".format(current_time)
+        'logs', 'generator', model_label, f'{current_time}_GEN-{idx}_train'
     )
     train_summary_writer = tf.summary.create_file_writer(train_log_dir)
     val_log_dir = os.path.join(
-        'logs', 'generator', model_label, "{}_GEN_val".format(current_time))
+        'logs', 'generator', model_label, f'{current_time}_GEN-{idx}_val'
+    )
     val_summary_writer = tf.summary.create_file_writer(val_log_dir)
 
     # Print model params
@@ -313,7 +320,7 @@ def main():
           f'         dff: {dff}\n'
           f'  vocab_size: {vocab_size}\n'
           f'     dropout: {dropout}\n')
-    print(f'\nModel Label: {model_label.replace("/", "")}\n'
+    print(f'Model Label: {model_label.replace("/", "")}\n'
           f'Condition: {args.condition}\n'
           f'Scheme: {args.training_scheme}')
 
@@ -331,25 +338,11 @@ def main():
     pathDir = os.path.join("weights", dataset, model_label[1:], cond)
     if not os.path.exists(pathDir):
         os.makedirs(pathDir)
-    idx = 0
+    pathModel = os.path.join(dirModel, f"model.keras")
 
-    # Save directory
-    dirModels = os.path.join("models", "generate")
-    if not os.path.exists(dirModels):
-        os.makedirs(dirModels)
-    while True:
-        tag = (
-            f'model_{idx}-{dataset.replace(" - ", " ").replace(" ", "_")}-'
-            f'{model_label}-{cond}'
-        )
-        pathModel = os.path.join(dirModels, f"{tag}.keras")
-        if not os.path.exists(pathModel):
-            pathModelLoss = os.path.join(dirModels, f"{tag}_loss.txt")
-            break
-        idx += 1
-    pathTrainingLog = pathModel.replace(".keras", "_trainingLog.csv")
-
-    # print(f'Saving model params at: {pathModelLoss}')
+    pathModelParams = os.path.join(dirModel, f"trainingParams.txt")
+    pathModelLoss = os.path.join(dirModel, f"trainingLoss.txt")
+    # print(f'Saving model params at: {pathModelParams}')
     print(f"\nSaving the trained model at:\n  {pathModel}\n")
     # print(f'Saving the training log at:\n  {pathModel}\n')
 
@@ -465,14 +458,15 @@ def main():
                     f"Runtime: {timeTrain:,.2f}hr"
                 )
                 data.loc[epoch, "loss"] = val_loss
+                data.loc[epoch, "best loss"] = best_val_loss
                 data.loc[epoch, "valid acc"] = val_acc
-                data.to_csv(pathTrainingLog, index=True)
+                data.to_csv(pathModelLoss, index=True)
 
             # Save model if validation loss decreases
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 model.save(pathModel)  # Save the model
-                with open(pathModelLoss, "w") as f:  # Save the params
+                with open(pathModelParams, "w") as f:  # Save the params
                     f.write(f"Loss: {best_val_loss}\n")
                     for action in parser._actions:  # Write job params
                         if action.dest != "help":  # skip help action
@@ -484,14 +478,14 @@ def main():
     timeTrain = ((timeEnd - timeStart) / 60) / 60  # convert to hr
     timeItr = args.num_epochs / timeTrain
     print(f"\nModel saved at:\n  {pathModel}")
-    print(f"Summary:\n  {pathModelLoss}")
-    print(f"Training Log:\n  {pathTrainingLog}")
+    print(f"Summary:\n  {pathModelParams}")
+    print(f"Training Log:\n  {pathModelLoss}")
     print(f"\nTraining Time: {timeTrain:.2f}hr, {timeItr:.2f}epoch/hr")
     print(f"Loss: {float(best_val_loss)}\n")
-    save_file = save_dir + "/best_loss.csv"
+    save_file = dirModel + "/best_loss.csv"
     with open(save_file, "w") as f:
         f.write(str(best_val_loss) + "\n")
-    data.to_csv(pathTrainingLog, index=True)
+    data.to_csv(pathModelLoss, index=True)
 
 
 
