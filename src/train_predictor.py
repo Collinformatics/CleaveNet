@@ -202,6 +202,16 @@ def main():
     # print(f'Enzyme Col: {enzCol}\nEnzyme List: {enzList}\nIdx: {enzIdx}\n')
     # sys.exit()
 
+    # Save directory
+    idx = 0
+    current_time = datetime.datetime.now().strftime("%Y%m%d")
+    while True:
+        pathDir = os.path.join('models', 'predictor', f'{current_time}-{idx}_PREDICTOR')
+        if not os.path.exists(pathDir):
+            os.makedirs(pathDir)
+            break
+        idx += 1
+    
     # Run ensemble training
     init = True
     results = {}
@@ -297,22 +307,16 @@ def main():
         idx = 0
         while True:
             current_time = datetime.datetime.now().strftime("%Y%m%d")
-            save_dir = os.path.join(
-                'models', 'predictor', model_label, f'{current_time}-{idx}_PREDICTOR'
-            )
+            save_dir = os.path.join(pathDir, f'{args.model_type}_{idx}')
             if not os.path.exists(save_dir):
                 os.makedirs(save_dir)
                 break
             idx += 1
-        train_log_dir = os.path.join(
-            'logs', 'predictor', model_label, f'{current_time}-{idx}_PREDICTOR'
-        )
+        train_log_dir = pathDir.replace('models', 'logs')
         train_summary_writer = tf.summary.create_file_writer(train_log_dir)
-        val_log_dir = os.path.join(
-            'logs', 'predictor', model_label, f'{current_time}-{idx}_PREDICTOR_val'
-        )
+        val_log_dir = f'{train_log_dir}_val'
         val_summary_writer = tf.summary.create_file_writer(val_log_dir)
-        sys.exit()
+
         l = len(str(args.num_epochs))
         for epoch in range(args.num_epochs + 1):
             print(f'Epoch: {epoch} / {args.num_epochs}')
@@ -407,10 +411,7 @@ def main():
                     if extVal_loss < best_extVal_loss:
                         # print(f"Saving with ext valid loss: {extVal_loss:.4f}")
                         # print(f"External valid rmse: {extVal_rmse}")
-                        best_extVal_loss_path = os.path.join(
-                            save_dir,
-                            "{}.keras".format(f"best-{dataset}-model")
-                        )
+                        best_extVal_loss_path = os.path.join(save_dir, "best_model.keras")
                         model.save(best_extVal_loss_path)
                         best_extVal_loss = extVal_loss
             else:
@@ -462,7 +463,8 @@ def main():
         plotter.plot_rmse(test_rmse, enzCol, ensemble_dir)
 
     # Print results
-    print('Training Results:')
+    print(f'Training Results: {args.model_type}')
+    print(f'Training Results: {args.model_type}')
     for ens, data in results.items():
         print(f'* Ensemble: {ens}')
         for i in range(len(data['Enz'])):

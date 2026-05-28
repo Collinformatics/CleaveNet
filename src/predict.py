@@ -13,8 +13,8 @@ parser.add_argument(
 )
 parser.add_argument(
 	"--model-dir", type=str, default=None,
-	help="Directory with the date and index where \"model.keras\" is found. "
-		 "Ex: models/predictor/DATE-0_PREDICTOR"
+	help="Directory with the date and index where \"model_type_0\" - \"model_type_4\" is "
+		 "found. Ex: DATE-#_PREDICTOR"
 )
 parser.add_argument(
 	"--no-csv-header", action='store_true',
@@ -82,7 +82,8 @@ dataloader = cleavenet.data.DataLoader(
 )
 
 pred_zscores, std_zscores = cleavenet.models.prediction(
-	data_path, eval_sequences, data_path, dataset=dataset, model_dir=args.model_dir,
-	predictor_model_type=args.model_type, true_zscores=true_scores, enzymes=enzymes
+	data_path, eval_sequences, data_path.replace(".csv", ""), dataset=dataset,
+	model_dir=args.model_dir, predictor_model_type=args.model_type,
+	true_zscores=true_scores, enzymes=enzymes
 )
 

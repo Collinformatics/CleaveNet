@@ -24,7 +24,7 @@ parser.add_argument(
 	help="number of sequences to be generated"
 )
 parser.add_argument(
-	"--output-dir", default="generated", type=str,
+	"--output-dir", default="sequences/generated", type=str,
 	help="Directory to store outputs "
 )
 parser.add_argument(
@@ -83,10 +83,10 @@ start_id = dataloader.char2idx[dataloader.START]
 vocab_size = len(dataloader.char2idx)
 
 # Load model
-dirModels = os.path.join('models', 'generate')
+dirModels = os.path.join('models', 'generator')
 if not args.model.startswith(dirModels):
 	args.model = os.path.join(dirModels, args.model)
-model = cleavenet.models.load_model(pathModel=args.model, seqLen=seqLen)
+model = cleavenet.models.loadGenerator(pathModel=args.model, seqLen=seqLen)
 # 
 if args.z_scores is not None:
 	cond_z_scores = pd.read_csv(args.z_scores)

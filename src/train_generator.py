@@ -6,7 +6,6 @@ import pandas as pd
 import random
 import sys
 import tensorflow as tf
-from tensorflow import keras
 import time
 from tqdm import tqdm
 
@@ -293,21 +292,20 @@ def main():
     n_tokens = 0
 
     # LOGGING
-    current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    date = datetime.datetime.now().strftime("%Y%m%d")
     idx = 0
     while True:
-        dirModel = os.path.join('models', 'generator', model_label,
-                                f'{current_time}_GEN-{idx}')
+        dirModel = os.path.join('models', 'generator', f'{date}_GEN-{idx}')
         if not os.path.exists(dirModel):
             break
         idx += 1
     os.makedirs(dirModel)
     train_log_dir = os.path.join(
-        'logs', 'generator', model_label, f'{current_time}_GEN-{idx}_train'
+        'logs', 'generator', f'{date}_GEN-{idx}_train'
     )
     train_summary_writer = tf.summary.create_file_writer(train_log_dir)
     val_log_dir = os.path.join(
-        'logs', 'generator', model_label, f'{current_time}_GEN-{idx}_val'
+        'logs', 'generator', f'{date}_GEN-{idx}_val'
     )
     val_summary_writer = tf.summary.create_file_writer(val_log_dir)
 
@@ -482,7 +480,7 @@ def main():
     print(f"Training Log:\n  {pathModelLoss}")
     print(f"\nTraining Time: {timeTrain:.2f}hr, {timeItr:.2f}epoch/hr")
     print(f"Loss: {float(best_val_loss)}\n")
-    save_file = dirModel + "/best_loss.csv"
+    save_file = dirModel + "/bestLoss.csv"
     with open(save_file, "w") as f:
         f.write(str(best_val_loss) + "\n")
     data.to_csv(pathModelLoss, index=True)
