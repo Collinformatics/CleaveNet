@@ -32,12 +32,20 @@ If you are using an NVIDIA GPU, you can monitor GPU usage with:
 
       watch -n 1 nvidia-smi
 
+## Note:
 
-## Generator:
+If the line "import cleavenet" gives you an error you'll need to add the working directory to PYTHONPATH:
+
+    export PYTHONPATH="$PYTHONPATH:$PWD"
+
+All training data should be saved in the "data" directory.
+
+
+# Generator:
 
 Training:
 
-- Train a model that can predice protein substrates.
+- Train a model that can generate protein substrates.
 
   Multiple parameters can be adjusted, to print the options run:
 
@@ -48,8 +56,19 @@ Training:
       python src/train_generator.py --data-path <filepath>
 
 
+# Predictor:
 
+- Train a model that can predict substrate activity.
 
+- The external validation set (--data-pathEV) is optional, if a file is not provided 5% of the dataset will be used for this set.
+
+Multiple parameters can be adjusted, to print the options run:
+
+      python src/train_generator.py --help
+
+Training:
+
+    python src/train_predictor.py --data-path <filename> --data-pathEV <filename>
 
 
 
