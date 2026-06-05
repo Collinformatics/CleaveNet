@@ -6,7 +6,7 @@ import os
 import sys
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras.regularizers import L2
+from keras.regularizers import L2
 
 
 
@@ -660,6 +660,116 @@ class AutoregressiveRNN(tf.keras.Model):
         return m.result()
 
 
+def loadGenerator(pathModel, seqLen, model_type=None, training_scheme='rounded'): #$
+    # if not pathModel.endswith('.keras'):
+    #     pathModel += '.keras'
+    # if not pathModel.startswith('models/'):
+    #     pathModel = os.path.join('models', pathModel)
+    pathModel = os.path.join(pathModel, 'model.keras')
+    print(f'\nLoading Model: {pathModel}')
+
+    # Print model info
+    pathParams = pathModel.replace('.keras', 'trainingParams.txt')
+    if os.path.exists(pathParams):
+        print('Training Params:')
+        with open(pathParams, 'r') as f:
+            print(f.read())
+        print()
+
+    model = keras.models.load_model(
+        pathModel,
+        custom_objects={
+            "TransformerDecoder": TransformerDecoder,
+            "ConditionalTransformerDecoder": ConditionalTransformerDecoder,
+            "DecoderLayer": DecoderLayer,
+            "PositionalEmbedding": PositionalEmbedding,
+        }
+    )
+
+    # if isinstance(model, ConditionalTransformerDecoder):
+    #     dummy_seq = tf.zeros((1, seqLen), dtype=tf.int32) # batch_size, seq_len
+    #     dummy_cond = tf.zeros((1, 18), dtype=tf.int32)    # conditioning vector
+    #     _ = model((dummy_seq, dummy_cond), training=False)
+    # else:
+    #     dummy_seq = tf.zeros((1, seqLen), dtype=tf.int32)
+    #     _ = model(dummy_seq, training=False)
+    model.summary()
+    return model
+
+
+def load_generator_model(model_type, model_weights, training_scheme='unconditional', parent_dir=''):
+    if not model_weights.endswith('.weights.h5'):
+         model_weights += '.weights.h5'
+
+    # Load relevant checkpoints, and model parameters
+    batch_size = 1
+    if model_type == 'transformer':
+        vocab_size = 22
+        num_layers = 2
+        num_heads = 6
+        #dropout = 0
+        dropout = 0.25
+        d_model = 64
+
+        if training_scheme == 'unconditional':
+            checkpoint_path = os.path.join(parent_dir+"weights/AUTOREG_transformer/unconditional/", model_weights)
+        elif training_scheme == 'conditional':
+            num_layers=3
+
+            checkpoint_path = os.path.join(parent_dir+"weights/AUTOREG_transformer/conditional/", model_weights)
+        elif training_scheme == 'both':
+            num_layers=3
+            checkpoint_path = os.path.join(parent_dir+"weights/AUTOREG_transformer/both/", model_weights)
+        elif training_scheme == 'rounded':
+            num_layers=3
+            d_model = 64
+            checkpoint_path = os.path.join("weights/AUTOREG_transformer/both_rounded/", model_weights) # rounded to tenth
+        print(f'Model params:\n'
+              f'  num_layers: {num_layers}\n'
+              f'     d_model: {d_model}\n'
+              f'   num_heads: {num_heads}\n'
+              f'         dff: {d_model}\n'
+              f'  vocab_size: {vocab_size}\n'
+              f'     dropout: {dropout}\n')
+        if training_scheme == 'unconditional':
+            model = TransformerDecoder(
+		        num_layers=num_layers,
+		        d_model=d_model,
+		        num_heads=num_heads,
+		        dff=d_model,  # dense params
+		        vocab_size=vocab_size,
+		        dropout_rate=dropout)
+        else:
+            model = cleavenet.models.ConditionalTransformerDecoder(
+						        num_layers=num_layers,
+						        d_model=d_model,
+						        num_heads=num_heads,
+						        dff=d_model, # dense params
+						        vocab_size=vocab_size,
+						        dropout_rate=dropout
+						        )
+    elif model_type == 'lstm':
+        regu = 0.01
+        d_model = 64
+        dropout = 0.2
+        d_embed = 64
+        seq_len = 11
+        num_layers = 4
+        vocab_size=22
+        model = AutoregressiveRNN(batch_size, vocab_size, d_embed, d_model, dropout,
+                                                   regu, seq_len, training=False, mask_zero=False, num_layers=num_layers)
+        checkpoint_path = os.path.join("weights/AUTOREG_lstm/20231016-133250_GEN/", model_weights)
+
+    print(f'\nModel Type: {model_type}\n'
+          f'    Scheme: {training_scheme}')
+    print(f'Loading Model Weights: {checkpoint_path}')
+
+    if training_scheme == 'unconditional':
+        model.summary()
+        model.load_weights(checkpoint_path)
+
+    return model, checkpoint_path
+
 def load_model(pathModel, seqLen, model_type=None, training_scheme='rounded'): #$
     # if not pathModel.endswith('.keras'):
     #     pathModel += '.keras'
@@ -695,81 +805,7 @@ def load_model(pathModel, seqLen, model_type=None, training_scheme='rounded'): #
     model.summary()
     return model
 
-
-def load_generator_model(model_type, model_weights, training_scheme='unconditional', parent_dir=''):
-	if not model_weights.endswith('.weights.h5'):
-		 model_weights += '.weights.h5'
-
-	# Load relevant checkpoints, and model parameters
-	batch_size = 1
-	if model_type == 'transformer':
-		vocab_size = 22
-		num_layers = 2
-		num_heads = 6
-		#dropout = 0
-		dropout = 0.25
-		d_model = 64
-
-		if training_scheme == 'unconditional':
-		    checkpoint_path = os.path.join(parent_dir+"weights/AUTOREG_transformer/unconditional/", model_weights)
-		elif training_scheme == 'conditional':
-		    num_layers=3
-
-		    checkpoint_path = os.path.join(parent_dir+"weights/AUTOREG_transformer/conditional/", model_weights)
-		elif training_scheme == 'both':
-		    num_layers=3
-		    checkpoint_path = os.path.join(parent_dir+"weights/AUTOREG_transformer/both/", model_weights)
-		elif training_scheme == 'rounded':
-		    num_layers=3
-		    d_model = 64
-		    checkpoint_path = os.path.join("weights/AUTOREG_transformer/both_rounded/", model_weights) # rounded to tenth
-		print(f'Model params:\n'
-			  f'  num_layers: {num_layers}\n'
-			  f'     d_model: {d_model}\n'
-			  f'   num_heads: {num_heads}\n'
-			  f'         dff: {d_model}\n'
-			  f'  vocab_size: {vocab_size}\n'
-			  f'     dropout: {dropout}\n')
-		if training_scheme == 'unconditional':
-		    model = TransformerDecoder(
-		        num_layers=num_layers,
-		        d_model=d_model,
-		        num_heads=num_heads,
-		        dff=d_model,  # dense params
-		        vocab_size=vocab_size,
-		        dropout_rate=dropout)
-		else:
-			model = cleavenet.models.ConditionalTransformerDecoder(
-						        num_layers=num_layers,
-						        d_model=d_model,
-						        num_heads=num_heads,
-						        dff=d_model, # dense params
-						        vocab_size=vocab_size,
-						        dropout_rate=dropout
-						        )
-	elif model_type == 'lstm':
-		regu = 0.01
-		d_model = 64
-		dropout = 0.2
-		d_embed = 64
-		seq_len = 11
-		num_layers = 4
-		vocab_size=22
-		model = AutoregressiveRNN(batch_size, vocab_size, d_embed, d_model, dropout,
-		                                           regu, seq_len, training=False, mask_zero=False, num_layers=num_layers)
-		checkpoint_path = os.path.join("weights/AUTOREG_lstm/20231016-133250_GEN/", model_weights)
-
-	print(f'\nModel Type: {model_type}\n'
-		  f'    Scheme: {training_scheme}')
-	print(f'Loading Model Weights: {checkpoint_path}')
-
-	if training_scheme == 'unconditional':
-		model.summary()
-		model.load_weights(checkpoint_path)
-
-	return model, checkpoint_path
-
-def load_predictor_model(model_type, checkpoint_path, batch_size, mask_zero=False):
+def loadModelPredictor(model_type, checkpoint_path, batch_size, mask_zero=False):
     print(f'Loading Weights: {checkpoint_path}\n\n')
     d_model = 32
     len_mmps = 18
@@ -838,7 +874,8 @@ def loadPredictor(model_type, path):
     return model
 
 
-def inference(model, dataloader, causal=False, seq_len=10, penalty=1, verbose=False, conditioning_tag=None, temperature=1):
+def inference(model, dataloader, causal=False, seq_len=10, penalty=1,
+              verbose=False, conditioning_tag=None, temperature=1):
     if causal: # autoregressive inference
         if conditioning_tag is None:
             start_seq = np.array([dataloader.char2idx[dataloader.START]], dtype=np.int32)  # start from START token
@@ -904,8 +941,14 @@ def prediction(dataPath, gen_data, generated_dir, dataset, model_dir,
     checkpoint_dir = os.path.join('models', 'predictor')
     if not os.path.exists(checkpoint_dir):
         os.mkdir(checkpoint_dir)
-    if not os.path.exists(generated_dir):
-        os.mkdir(generated_dir)
+    idx = 0
+    generated_dir = f'{generated_dir}_{predictor_model_type}_{idx}'
+    while True:
+        if not os.path.exists(generated_dir):
+            os.mkdir(generated_dir)
+            break
+        idx += 1
+
     if predictor_model_type == 'transformer':
         ensembles = ['transformer_0/',
                  'transformer_1/',
@@ -943,13 +986,13 @@ def prediction(dataPath, gen_data, generated_dir, dataset, model_dir,
     predictions = []
     for e_num, ensemble in enumerate(ensembles):
         print("Running", e_num, ensemble)
-        print(f'EVALUATING SEQUENCES FROM: {generated_dir}\n')
+        print(f'EVALUATING SEQUENCES FROM: {generated_dir}')
         checkpoint_path = os.path.join(
-            checkpoint_dir, ensemble, model_dir, 'model.keras'
+            checkpoint_dir, model_dir, ensemble, 'model.keras'
         )
         # Build and load predictor model
         if dataset == 'kukreja':
-            model = cleavenet.models.load_predictor_model(
+            model = cleavenet.models.loadModelPredictor(
                 model_type=predictor_model_type, checkpoint_path=checkpoint_path,
                 batch_size=batch_size, mask_zero=True)
         else:
