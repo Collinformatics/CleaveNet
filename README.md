@@ -42,7 +42,7 @@ All training data should be saved in the "data" directory.
 
 # Training:
 
-There are 2 different models avalible, and LSTM and a Transformer. The Transformer is the default option. To use the LSTM add this flag:
+There are two available models, an LSTM and a Transformer. The Transformer is the default option. To use the LSTM add this flag:
 
     --model-type lstm
 
