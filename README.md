@@ -71,8 +71,4 @@ Multiple parameters can be adjusted, to print the options run:
 
 - The external validation set is optional, if a file is not provided 5% of the dataset will be used for this set. To specify an external validation set use this flag:
 
-      --data-pathEV <filename>
-
-
-
-
+      --data-pathEV <filenameEV>
