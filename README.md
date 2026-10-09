@@ -48,32 +48,29 @@ There are two available models, an LSTM and a Transformer. The Transformer is th
 
 ## Generator:
 
-Training:
+To train a model that can generate protein substrates:
 
-- Train a model that can generate protein substrates.
+    python src/train_generator.py --data-path <filepath>
 
-  Multiple parameters can be adjusted, to print the options run:
+Multiple parameters can be adjusted, to print the options run:
 
-      python src/train_generator.py --help
-
-- You can train the generator with:
-
-      python src/train_generator.py --data-path <filepath>
+    python src/train_generator.py --help
 
 
 ## Predictor:
 
-- Train a model that can predict substrate activity.
+To train a model that can predict substrate activity:
 
-- The external validation set (--data-pathEV) is optional, if a file is not provided 5% of the dataset will be used for this set.
+    python src/train_predictor.py --data-path <filename>
 
 Multiple parameters can be adjusted, to print the options run:
 
-      python src/train_generator.py --help
+    python src/train_generator.py --help
 
-Training:
+- The external validation set is optional, if a file is not provided 5% of the dataset will be used for this set. To specify an external validation set use this flag:
 
-    python src/train_predictor.py --data-path <filename> --data-pathEV <filename>
+      --data-pathEV <filename>
+
 
 
 
