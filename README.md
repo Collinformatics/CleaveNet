@@ -42,6 +42,8 @@ All training data should be saved in the "data" directory.
 
 # Training:
 
+Datasets should be placed in the "data" directory. Only the files names will need to be provided when training a model.
+
 There are two available models, an LSTM and a Transformer. The Transformer is the default option. To use the LSTM add this flag:
 
     --model-type lstm
@@ -50,7 +52,7 @@ There are two available models, an LSTM and a Transformer. The Transformer is th
 
 To train a model that can generate protein substrates:
 
-    python src/train_generator.py --data-path <filepath>
+    python src/train_generator.py --data-path <filename>
 
 Multiple parameters can be adjusted, to print the options run:
 
