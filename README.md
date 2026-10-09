@@ -40,8 +40,13 @@ If the line "import cleavenet" gives you an error you'll need to add the working
 
 All training data should be saved in the "data" directory.
 
+# Training:
 
-# Generator:
+There are 2 different models avalible, and LSTM and a Transformer. The Transformer is the default option. To use the LSTM add this flag:
+
+    --model-type lstm
+
+## Generator:
 
 Training:
 
@@ -56,7 +61,7 @@ Training:
       python src/train_generator.py --data-path <filepath>
 
 
-# Predictor:
+## Predictor:
 
 - Train a model that can predict substrate activity.
 
